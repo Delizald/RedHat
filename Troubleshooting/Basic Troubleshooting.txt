@@ -1,0 +1,132 @@
+Collecting Information From a Reporter
+Avoid asking questions in an accusatory fashion.
+Instead of focusing on blame, try to gain the trust of the reporter.
+Put the reporter at ease.
+Focus on the reporter’s observation skills by rephrasing the question:
+"Have you noticed any recent changes to your system or environment?"
+Remember that the reporter does not have your experience.
+The reporter is less likely to notice significant clues or warning signs.
+The reporter may not perceive changes as being related to the current problem.
+Use every problem report as an opportunity to teach the reporter how to gather more information.
+Train the reporter to write down the exact error message text.
+Suggest that the reporter keep a log of changes he or she makes to the system.
+
+
+Review Available Logs
+Read log files first!
+/var/log/messages is a good place to start.
+ls -lt /var/log/ lists log entries chronologically, with the newest at the top.
+Use the -r flag to reverse the order, i.e., newest at the bottom.
+[root@server1 ~]# ls -ltr /var/log
+Use dmesg to read the contents of the kernel’s log buffer.
+The buffer has a finite size, so the oldest messages are dropped once the buffer fills.
+On x86/x86-64, the buffer is 128 KB in Red Hat Enterprise Linux 5.
+Kernel messages are generally logged to /var/log/messages.
+During boot, a snapshot of the log buffer is saved to /var/log/dmesg near the end of the rc.sysinit script.
+Check the kernel’s ring buffer, or change rsyslog to log kernel messages to a file; kernel oops are often visible only from the kernel’s ring buffer or directly on the console.
+Kernel oops are often caused when a part of the kernel fails; because the kernel is modular, this may eject a module (and dependencies) from the stack.
+[root@server1 ~]# less /var/log/dmesg
+[root@server1 ~]# dmesg | less
+Some log files contain potentially useful information but can be hard to interpret, such as /var/log/audit/audit.log.
+Use tools such as ausearch to analyze audit logs and search for specific events.
+Example: Find all audit messages of type AVC (access vector cache) with ausearch -m AVC
+[root@desktop1 ~]# less /var/log/audit/audit.log
+[root@desktop1 ~]# ausearch -m AVC # SELinux messages
+[root@desktop1 ~]# ausearch -m LOGIN # Login messages
+
+Parsing Logs
+Log files can contain many entries that are irrelevant for troubleshooting.
+Use grep -v 'ARG' /var/log/messages to remove irrelevant entries.
+To lose other messages without starting multiple grep commands, use extended regular expressions:
+[root@server1 ~]# grep -Ev 'ARG1|ARG2|ARG3' /var/log/messages
+grep displays lines in a file that match a pattern.
+It can also process standard input when the filename argument is omitted.
+Patterns may contain regular expression metacharacters.
+It is good practice to quote regular expressions.
+Example: Using grep to search for a pattern in a log file
+[root@server1 ~]# grep 'sudo' /var/log/secure
+Feb 14 08:41:03 host sudo: ghacker : TTY=pts/1 ; PWD=/home/ghacker ; USER=root ; COMMAND=/bin/bash -l
+Output from ps lists running processes.
+To list only lines that contain the string "init," run the following:
+[student@server1 ~]$ ps ax | grep 'init'
+
+Parsing Logs
+Common grep options include:
+Option	Function
+-i
+Perform a case-insensitive search
+-v
+Exclude lines that contain the pattern
+-c
+Display a count of lines with the matching pattern
+-l
+Only list file names, do not display the matched lines
+-n
+Precede matched line with line numbers
+--color
+Highlight the matched string
+-A, -B
+When followed by a number, these options print that many lines after or before each match. This is useful for seeing the context in which a match appears within a file.
+-r
+Perform a recursive search of files, starting with the named directory
+To change the color that --color uses (red by default), use the GREP_COLOR variable:
+[student@server1 ~]$ export GREP_COLOR='01;34'
+Use head and tail wisely to increase your system administration capabilities.
+To see logfiles scroll in real time, run tail -f logfile in one terminal, while running commands in another terminal.
+Use command line flags when scripting and parsing output.
+Example: Output of ps aux
+[student@server1 ~]# ps aux
+USER   PID %CPU %MEM    VSZ   RSS TTY    STAT START   TIME COMMAND
+root     1  0.0  0.0   2112   632 ?      Ss   Apr16   0:05 init [5]
+root     2  0.0  0.0      0     0 ?      S<   Apr16   0:00 [kthread]
+root     3  0.0  0.0      0     0 ?      S<   Apr16   0:04 [migration/0]
+...
+Specify that you want to start tail at a specific line number, such as 2:
+[student@server1 ~]# ps aux | tail -n +2
+root     1  0.0  0.0   2112   632 ?      Ss   Apr16   0:05 init [5]
+root     2  0.0  0.0      0     0 ?      S<   Apr16   0:00 [kthread]
+root     3  0.0  0.0      0     0 ?      S<   Apr16   0:04 [migration/0]
+
+Increasing Verbosity
+For some applications you can increase verbosity in the application’s configuration file.
+Example: In the CUPS printing system, change LogLevel Info to LogLevel Debug or LogLevel Debug2 in /etc/cups/cupsd.conf to increase verbosity.
+[root@server1 ~]# grep LogLevel /etc/cups/cupsd.conf
+Some command line tools have an option to increase verbosity.
+This is often the -v flag.
+Some tools accept multiple flags to steadily increase debugging output.
+Example: tcpdump accepts -v or -vv or even -vvv to increase debug output.
+If you are not sure which flag to pass, use -h or -- for usage and help output.
+[root@server1 ~]# lspci -vvv | less
+
+
+Problem Replication
+A key to ensuring success at resolving problems is being able to replicate the problem at will.
+Being able to repeat the problem gives you a greater understanding of the problem triggers.
+You may see significant clues or symptoms that the reporter missed.
+You can use focused monitoring tools to expose hidden information.
+If you cannot replicate the problem, how do you truly know that the problem was fixed?
+
+Comparing
+Compare a broken system with a similar system that is functioning properly.
+Choose systems that are as close to identical as possible including hardware configuration, OS configuration, and installed applications.
+Do not adjust the healthy system.
+Compare system logs and program output between the two systems.
+Compare configuration files.
+Make copies of /etc from both systems and run a recursive diff.
+Use performance monitoring tools to compare machine performance.
+sar compares metrics taken over a long period of time.
+top compares processes that are currently active.
+Compare two machines with the same software installed and congruent configurations, but with a different hardware platform.
+
+Isolating
+Avoid taking steps based on the first identified cause.
+This can lead to a solution that does not address the root cause of the problem.
+Brainstorm as many causes as possible that might produce the problem’s symptoms.
+The goal is to solve the root cause of a problem not to simply address symptoms.
+Rank all the possible causes by difficulty to troubleshoot and solve.
+Start with the easiest causes and work down to the most complex causes.
+
+Testing
+Make one change at a time.
+Test the impact of each change.
+Making more than one change at a time adds variables of complexity.

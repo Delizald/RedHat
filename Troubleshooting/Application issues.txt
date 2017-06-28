@@ -1,0 +1,304 @@
+SystemTap
+Allows developers and administrators to write and reuse simple scripts for deep examination of live Linux system activities.
+Extract, filter, and summarize data quickly and safely.
+Enables diagnosis of complex performance or functional problems.
+systemtap package provides the SystemTap framework.
+kernel-devel package must usually be installed as well.
+kernel-devel and running kernel versions must match.
+View several example scripts at /usr/share/doc/systemtap-client*/examples.
+For more info, see http://sourceware.org/systemtap/SystemTap_Beginners_Guide/
+
+
+strace
+Use strace for spot checks in instances that do not require a script to be written.
+Start a daemon with strace to see its system calls and where a failure may occur in real time. * Monitor a process that is already running:
+Determine if the process has crashed.
+Determine why the process is taking up excessive IO or CPU cycles.
+Using strace on Binaries
+To display only file open calls, use strace against ls with the -e open option:
+# strace -e open ls
+open("/etc/ld.so.cache", O_RDONLY)      = 3
+open("/lib64/libselinux.so.1", O_RDONLY) = 3
+open("/lib64/librt.so.1", O_RDONLY)     = 3
+open("/lib64/libcap.so.2", O_RDONLY)    = 3
+open("/lib64/libacl.so.1", O_RDONLY)    = 3
+open("/lib64/libc.so.6", O_RDONLY)      = 3
+open("/lib64/libdl.so.2", O_RDONLY)     = 3
+open("/lib64/libpthread.so.0", O_RDONLY) = 3
+open("/lib64/libattr.so.1", O_RDONLY)   = 3
+open("/usr/lib/locale/locale-archive", O_RDONLY) = 3
+open(".", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 3
+file
+
+Using strace on Running Processes
+To use strace on running processes, find the PID of the sshd listener, and then use strace to monitor connections to it.
+Use -ff to follow forked processes.
+Use -e accept to show only accept calls.
+# pgrep -o sshd
+1451
+# strace -ff -e accept -p 1451
+Process 1451 attached - interrupt to quit
+
+...ON A SEPARATE TERMINAL...
+# ssh localhost4
+
+...BACK TO THE ORGINIAL TERMINAL...
+accept(3, {sa_family=AF_INET, sin_port=htons(45102), sin_addr=inet_addr(“127.0.0.1")}, [16]) = 5
+--- SIGCHLD (Child exited) @ 0 (0) ---
+^CProcess 1451 detached
+
+
+strace
+Table 1. Useful strace Options
+-e <expr> [qualifier=][!]value1[,value2]…
+Show or exclude (with !) specific system calls. See the man page for a more detailed list.
+-ff
+Follow forked processes.
+-o filename
+Send output to filename.
+-p pid
+Attach strace to the process with pid specified, terminate with CTRL+C.
+-t
+Print a timestamp for each output line.
+-c
+Provide a statistical report on how many times system calls were executed.
+
+
+Monitoring Memory Use With free
+free can give the current status of system memory utilization:
+# free -m
+        total        used    free     shared    buffers     cached
+Mem:    996          889     107           0        123        568
+-/+ buffers/cache:   197     799
+Swap:   999            0     999
+-m shows memory in MB.
+-g show memory in GB.
+Highlighted data point on buffers/cache line is amount of free memory minus file system cache.
+File system cache is freed when memory is required for applications.
+This is your true “free” memory statistic.
+
+
+Monitoring Memory Use With vmstat
+vmstat shows memory usage over a period of time.
+-SM flag shows the output in MB
+45 is the report interval in seconds
+10 is the number of times to report.
+Example: Memory occupied over time without swapping activity
+# vmstat -SM 45 10
+procs --------memory------- -swap- -io---- -system---- ----cpu---------
+ r  b swpd free  buff  cache si so  bi  bo    in    cs us sy  id  wa st
+ 1  0    0   221  125     42  0  0   0   0    70     4  0  0  100   0 0
+ 2  0    0   192  133     43  0  0 192  78   432  1809  1 15   81   2 0
+ 2  1    0    85  161     43  0  0 624 418  1456  8407  7 73    0  21 0
+ 0  0    0    65  168     43  0  0 158 237   648  5655  3 28   65   4 0
+ 3  0    0    64  168     43  0  0   0   2  1115 13178  9 69   22   0 0
+ 7  0    0    60  168     43  0  0   0   5  1319 15509 13 87    0   0 0
+Table 2. Explanation of Memory Statistics in vmstat
+swpd
+The amount of virtual memory used.
+free
+The amount of idle memory.
+buff
+The amount of memory used as buffers.
+cache
+The amount of memory used as cache.
+si
+The amount of memory swapped in from disk.
+so
+The amount of memory swapped to disk.
+
+
+Detecting Process Memory Use With ps
+ps helps determine the top 10 processes using RAM.
+Includes amount of resident (RSS) RAM in use per process.
+Top-most process takes largest percentage of overall system memory.
+# ps -A --sort -rss -o comm,pmem,rss |head -n 11
+COMMAND         %MEM   RSS
+iscsiuio         2.2 22796
+ovirt-guest-age  1.4 14984
+osad             0.9  9532
+multipathd       0.4  4504
+
+
+Introduction to sar
+System Activity Reporter or sar is provided by sysstat package.
+sar produces system utilization reports based on data collected by sadc.
+In Red Hat Enterprise Linux, sar runs automatically and processes files that are automatically collected by sadc.
+Reports are written to /var/log/sa/ and are named sardd,
+dd is the two-digit representation of the previous day’s two-digit date.
+sar is normally run by the sa2 script.
+Script is periodically invoked by cron via sysstat, which is located in /etc/cron.d/.
+By default, cron runs sa2 once a day at 23:53.
+Produces a report for the entire day’s data.
+
+
+Using sar
+sar command can report on Memory, CPU, swap, I/O, and much more.
+Historical sar data must be called with the -f flag (e.g.: -f /var/log/sa/sar10).
+Without -f, sar reports on recent data or real-time data if intervals are specified.
+# sar -u 1 1
+04:37:40 PM     CPU %user %nice %system  %iowait    %steal     %idle
+04:37:41 PM     all  5.25  0.00   3.78     0.00      0.00     90.97
+04:37:42 PM     all  6.06  0.00   3.27     0.33      0.00     90.34
+Average:        all  0.00  0.00   0.00     0.00      0.00    100.00
+
+
+sar accepts two number options as the last two arguments.
+First is an interval in seconds
+Second is a count of how many times to report.
+If count is not specified, sar reports until interrupted.
+If interval and count are not specified, sar displays all current data until now and reports until interrupted.
+-u [ALL]
+Display CPU usage for the current day up to now. Use ALL to report on more fields.
+-P {core|ALL}
+Display CPU usage broken down by cores. To report on a specific core, specify a number for CORE. Use ALL to report on all cores.
+-r
+Display memory statistics.
+-S
+Display swap statistics.
+-b
+Display I/O activities.
+-d [-p]
+Display individual block device I/O activities, the optional -p flag displays devices in a more human understandable format (sda, sdb).
+
+
+Startup Failure
+Most common class of application problem.
+Requires step-by-step testing.
+Common causes of startup failures:
+Configuration file errors
+File and SELinux permissions
+Resource availability
+Diagnose by checking relevant logs when you start services.
+Double check that the service is enabled in systemd.
+
+
+Startup Issues
+When an application starts, but fails to run, locate the configuration files in one of the following ways:
+Use rpm:
+# rpm -qc <package-name>
+/etc/logrotate.d/syslog
+/etc/rsyslog.conf
+/etc/sysconfig/rsyslog
+Check the man pages for the application for configuration file locations.
+Check the /etc/sysconfig/application script for pointers to configuration files.
+Use strings against an application binary and then use grep to find strings such as conf and etc:
+# strings /sbin/rsyslogd|grep conf|grep etc
+...
+/etc/rsyslog.conf
+Double check that the service is defined in systemd and is enabled.
+
+
+
+Configuration Issues
+Check the configuration file for proper syntax and configuration.
+Use vim text editor to expose errors with built-in text highlighting mode.
+Check the application’s man page to see if the application has a built-in syntax checker.
+Check the configuration file for corruption and proper file format.
+If configuration files were edited on a remote system or downloaded from the Internet, the file may be in DOS text format.
+DOS text files contain extra characters that some programs cannot recognize or see as errors.
+Use file to detect the file format.
+If the file output shows anything more than just ACSII text, the file may cause errors.
+# file example.conf
+example.conf:  ASCII text, with CRLF line terminators
+Check the configuration for pointers to non-existent files, incorrect IP addresses, non-standard ports, ports that are in use, non-existent interfaces, or other similar issues.
+To locate these issues, review relevant logs when starting the application.
+Make sure all network resources that are called in the configuration file are accessible from the system running the application, such as IP addresses, host names, and ports.
+
+Troubleshooting systemd issues
+When the start of a service fails, systemctl gives you a generic error message:
+# systemctl start foo.service
+Job failed. See system journal and 'systemctl status' for details.
+Services that run by systemd do not relate to your login session.
+Output is not connected to your terminal.
+You do not see error messages generated by the service.
+Service generated output (stdout, stderr, syslog(3), and exit codes of failed services), are directed to systemd journal.
+# systemctl status foo.service
+foo.service - mmm service
+          Loaded: loaded (/etc/systemd/system/foo.service; static)
+          Active: failed (Result: exit-code) since Fri, 11 May 2012 20:26:23 +0200; 4s ago
+         Process: 1329 ExecStart=/usr/local/bin/foo (code=exited, status=1/FAILURE)
+          CGroup: name=systemd:/system/foo.service
+
+May 11 20:26:23 scratch foo[1329]: Failed to parse config
+Use journalctl to list the journal.
+If a syslog service (such as rsyslog) is running, you can also find journal messages in /var/log/messages (depending on rsyslog configuration).
+Source: http://freedesktop.org/wiki/Software/systemd/Debugging/
+
+
+Try running the application from the command line in a foreground, verbose, or debug mode:
+# /path/to/application/binary -startup_flags -debug_flags
+If these modes are not available, run it manually with strace:
+# strace /path/to/application/binary -startup_flags
+
+Non-Responsive Applications
+Applications that start but do not respond are another class of problem.
+Diagnose by reviewing relevant logs and running the application on the command line in a debug or verbose mode.
+Unresponsive applications can be caused by configuration issues.
+Most likely cause is resource contention.
+Identify all resources being used by the application with tools such as lsof and by looking at the configuration file.
+Use tools such as top, df, and vmstat to monitor current system resource utilization.
+Another common source of unresponsive applications is losing connectivity to storage that the application depends on.
+Check ownership, permissions, SELinux, and ACLs for files being accessed by the application.
+To check what an application is doing in real time, find its PID and run strace against it:
+# pgrep sshd
+1451
+# strace -p 1451
+Process 1451 attached - interrupt to quit
+select(7, [3 4], NULL, NULL, NULL
+
+
+Applications With Poor Performance
+To determine whether an application is performing poorly:
+Define normal performance for that application.
+Use tools such as sar and logwatch to compare historical and current metrics.
+Significant change in application performance are cause for concern.
+Could be legitimate reasons for the change
+Could be sign of malicious activity
+Typically, performance problems are due to a sudden increase in usage of the application.
+For example, your site was posted on a popular blog.
+In this case, the solution application tuning and hardware resource planning.
+When an application performs poorly, check for resource contention.
+Typical resource contention issues include insufficient CPU cycles, congested network bandwidth, congested disk I/O, low disk space, or a combination of the above.
+Diagnose these issues by pulling metrics from your system with tools such as vmstat, pidstat, mpstat, sar, and iostat.
+An application’s default settings may not match your usage patterns.
+Research and tune the application to optimize performance in your specific environment.
+
+
+Memory Leaks
+Out Of Memory Killer (OOM Killer)
+Memory leaks can take up all available RAM and cause the system to use swap space.
+Using swap space impacts system and application performance.
+When RAM and swap are exhausted, the kernel frees memory automatically by using OOM Killer to kill processes.
+OOM Killer has no idea which processes are critical to your application.
+System may still lock up or eventually result in kernel panic.
+Processes killed by OOM Killer can be tracked in /var/log/messages:
+# grep -i kill /var/log/messages*
+host kernel: Out of Memory: Killed process 2592 (oracle).
+If a kernel panic occurs, the console shows something similar to this:
+kernel: httpd invoked oom-killer: gfp_mask=0x201d2, order=0, oomkilladj=0
+kernel:
+kernel: Call Trace
+
+Memory Leak Tools
+Red Hat Enterprise Linux provides memcheck to scan binaries for potential memory leaks.
+memcheck is part of the valgrind utility installed with the valgrind package.
+Normally used by developers to diagnose code runtime issues.
+Executes the binary in question and provides a report.
+If a binary is usually run like this:
+# my prog arg1 arg2
+Use valgrind to start memcheck like this:
+# valgrind --leak-check=yes myprog arg1 arg2
+...
+==19182== 40 bytes in 1 blocks are definitely lost in loss record 1 of 1
+...
+Look for these key phrases in the output:
+"definitely lost" - memcheck has found a memory leak
+"probably lost" - memcheck may have found a memory leak.
+
+
+Unexpected Behavior
+Unexpected application behavior is another class of problem.
+This problem can have several root causes including:
+Configuration errors
+Hardware failure, such as disk or memory corruption, CPU failure, and so on

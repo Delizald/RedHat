@@ -1,0 +1,99 @@
+A solid backup plan can pay off in these instances:
+When a system malfunctions and files are lost
+When a user or the system administrator deletes or corrupts a file by accident
+When a catastrophic disaster occurs
+Even with disk redundancy, you still need to back up files.
+RAID provides fault tolerance, but it does not help when a disaster occurs or when a file is corrupted or accidentally removed.
+Red Hat Enterprise Linux has several low-level backup options that can handle files or disks on a per-system basis, such as dd, tar, cpio, and dump.
+Use of these tools alone is not considered a solid enterprise backup strategy.
+Red Hat Enterprise Linux includes two open source enterprise-level backup solutions: Amanda and Bacula.
+These solutions use a client/server architecture and are considered usable for enterprise backup purposes.
+There are many other enterprise-class backup solutions that work with Red Hat Enterprise Linux, such as Symantec NetBackup and Arconis.
+Copyright ©2015 Red Hat, Inc.
+
+0:41
+
+Choosing a Backup Strategy
+Choosing the right solution is up to the individual organization’s needs, budget, and expertise.
+A good enterprise backup solution for a Red Hat Enterprise Linux environment should:
+Support Red Hat Enterprise Linux without much effort
+Use client/server architecture
+Features that are nice to have:
+Support for multiple platforms
+API or command line interface for scripting
+Ability to take media offline and track that media
+Copyright ©2015 Red Hat, Inc.
+
+0:44
+
+Backups and Virtualization
+Virtual systems are no longer tied to hardware.
+Baremetal restoration is no longer required.
+Baremetal systems only need to run as hypervisors.
+Baremetal system do not need to store stateful data.
+A virtual system is essentially the same as a file on disk.
+There are a myriad of methods for creating full backups of entire systems.
+Real-time replication of entire systems is now possible.
+Entire systems can fail between physical locations without a restore.
+Copyright ©2015 Red Hat, Inc.
+	
+The ability to restore specific files on demand is still required.
+Data deduplication economizes space and I/O, by not backing up data twice, when backing up an entire virtual disk or file system.
+
+isasters can be classified in two broad categories:
+Natural disasters such as floods, hurricanes, tornadoes, or earthquakes.
+You cannot prevent a natural disaster.
+You can reduce or avoid losses with good mitigation planning.
+Man-made disasters such as hazardous material spills, infrastructure failure, or bio-terrorism.
+Surveillance and mitigation planning are invaluable for avoiding or lessening losses.
+
+
+43% of companies that experience a major loss of business data never reopen.
+29% of companies that experience a major data loss close within 2 years.
+Preparing for continuation or recovery of systems must be taken very seriously.
+Involves a significant investment of time and money
+Aims to ensure minimal losses if a disruptive event occurs
+A disaster recovery plan (DRP) is the overall plan to recover from a disaster.
+A DRP includes planning for the resumption of applications, data, hardware, electronic communications (such as networking), and other IT infrastructure.
+Control measures are steps or mechanisms that reduce or eliminate various threats.
+
+Preventive - Aimed at preventing an event from occurring.
+Detective - Aimed at detecting or discovering unwanted events.
+Corrective - Aimed at correcting or restoring the system after a disaster or an event.
+
+Define DR objectives that indicate key metrics for various business processes.
+Two commonly defined objectives are:
+Recovery point objective (RPO)
+Recovery time objective (RTO)
+
+Recovery point objective (RPO) - Maximum tolerable period in which data might be lost from an IT service due to a major incident.
+RPO gives systems designers a limit to work to.
+
+Recovery time objective (RTO) - Duration of time and a service level within which a business process must be restored after a disaster (or disruption) in order to avoid unacceptable consequences associated with a break in business continuity.
+RTO can include time for trying to fix the problem without a recovery, the recovery itself, testing, and communication to users.
+RTO is the longest period of time the business can do without the IT Service in question.
+Invoking a recovery plan relies on decision making and the availability of resources to execute the plan.
+RTO must account for the time required to set the recovery plan in motion.
+
+Incomplete RTOs and RPOs can quickly derail a disaster recovery plan.
+Every item in the DR plan requires a defined recovery point and time objective.
+Failure to create RTOs and RPOs may lead to significant problems that can extend the disaster’s impact.
+After RTO and RPO metrics are mapped to IT infrastructure, the DR planner can determine the most suitable recovery strategy for each system.
+
+Backups made to tape and sent offsite at regular intervals.
+Backups made to disk onsite and automatically copied to an offsite disk, or made directly to an offsite disk.
+Replication of data at the disk frame level to an offsite location over a high-speed WAN, which overcomes the need to restore the data (only the systems need to be restored or synchronized).
+Use of high-availability systems which keep both the data and systems replicated offsite.
+Enables continuous access or brief cutover time to systems and data.
+Doable using virtualization for all systems in an enterprise where baremetal systems are only used as hypervisors.
+Use an outsourced disaster recovery provider that provides a stand-by site and systems.
+
+
+Disaster Recovery: Avoiding Disaster
+Local mirrors of systems and/or data
+Disk protection technology, such as RAID
+Surge protectors
+Uninterruptible power supply (UPS) and/or backup generator
+Fire prevention/mitigation systems, such as alarms and fire extinguishers
+Strong physical security to limit access to hardware
+Adequate heating or cooling system, even during power outages

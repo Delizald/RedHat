@@ -1,0 +1,324 @@
+Managing Configuration Files
+When editing configuration files to troubleshoot problems, back up the files before you touch them.
+Use a revision control system
+Or, make a copy by hand and include the current date and time in the file name.
+Example
+[root@server1 etc]# cp bofh.conf bofh.conf.$(date +%Y%m%d-%H%M)
+Test after each and every single change.
+If the change was successful, congratulations!
+If not successful, revert to the previous version and try something else.
+Repeat this process until the problem is solved.
+
+Using diff
+Use diff to compare the contents of two files.
+Using Unified Diff Format
+Unified diff format helps the patch utility more accurately apply changes.
+If you have several similar files that need the same changes, you can do the following:
+Make the change once.
+Store a unified diff comparing the changed file to an unchanged file.
+Use patch to apply your changes to multiple files.
+[student@server1 ~]$ diff -u file.conf-station1 file.conf-station20
+1c1
+--- file.conf-station1 2007-01-03 18:36:36.000000000 -0800
++++ file.conf-station20 2007-01-02 21:10:30.000000000 -0800
+@@ -1,4 +1,4 @@
+-Hostname = station1
+-Setting1 = a
++Hostname = station20
++Setting1 = A
++Setting2 = B
+ Setting3 = C
+-Setting4 = D
+
+using patch
+Store the output of a diff -u in a file.
+Run a command like the following:
+Example: Make file.conf-station1 look like file.conf-station20
+[student@server1 ~]$ patch -b file.conf-station1 file.conf.patch
+It would be advisable to first edit file.conf.patch and remove the two lines describing the Hostname variable.
+Those should remain different between systems.
+If anything terrible happens, patch -b automatically creates a backup of each file it changes.
+Backups are given the .orig extension.
+
+Revision control systems (or RCS) are sets of tools that allow administrators to easily maintain different versions of files.
+Historically RCS were centralized:
+A single location stored all the files and their history
+People working with those files checked out a single revision and committed changes to the central repository.
+RCS, CVS, and SVN are classic examples of centralized systems.
+In the last few years, there has been a shift to decentralized RCS.
+Authors and contributors still use a central repository
+Everybody can have a complete history, work on their own local branches, and merge changes as needed.
+Bazaar-NG and Git are more recent and decentralized tools
+
+Check Out a Project
+Use git clone to check out a project from a Git repository into a working directory on the local system.
+The Git repository can be hosted locally or on a remote server.
+The path name is specified as the required argument to the clone command.
+The optional second argument (config-files in this example), is the directory to create with the Git working directory.
+[student@server1 ~]$ git clone /var/local/config-files.repo config-files
+Initialized empty Git repository in /home/user/config-files/.git/
+To clone a remote Git repository, the path name would include a user@hostname prefix to specify an SSH account to use to access the remote repository:
+git clone gituser@demo:/var/local/config-files.repo config-files
+
+Manage Changes Locally
+Define who you are with these two global settings:
+[student@server1 ~]$ git config --global user.email student@server1.example.com
+[student@server1 ~]$ git config --global user.name 'Sally Student'
+The above commands create a configuration file called ~/.gitconfig with the appropriate entries using correct syntax.
+As you update configuration files, use git status to query Git about the status of your updates. 	
+
+
+Manage Changes Locally
+Git does track some file attributes, but it does not preserve file ownership.
+Example: These files were originally owned by root with a group ownership of lp
+[student@server1 config-files]$ ls -l cups/
+total 19
+-rw-rw-r--. 1 student student    0 Sep  8 22:16 classes.conf
+... Output omitted ...
+Use`diff` to display the differences in the file contents:
+[student@server1 config-files]$ git diff
+[student@server1 config-files]$ vim hosts
+[student@server1 config-files]$ git diff
+diff --git a/hosts b/hosts
+index 0a6354e..d008514 100644
+--- a/hosts
++++ b/hosts
+@@ -1,3 +1,4 @@
+ 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+ ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+-192.168.0.250  demo    demo.example.com
++192.168.0.250  demo demo.example.com
++192.168.0.254  instructor instructor.example.com
+
+	f you accidentally delete a file, use git checkout to recover it.
+git checkout requires the file to recover as an argument, otherwise it only lists missing files.
+You can also use git checkout to revert to the repository’s version of a file when working changes need to be discarded.
+
+Use git add to add new files and git rm to remove existing files from a project.
+Changes are not saved to the repository until you commit them
+
+
+If you issue git rm by mistake, the following commands show how to recover from this:
+[student@server1 config-files]$ git reset HEAD yum.conf
+Unstaged changes after reset:
+M   yum.conf
+[student@server1 config-files]$ git status
+# On branch master
+# Your branch is ahead of 'origin/master' by 2 commits.
+#
+# Changed but not updated:
+#   (use "git add/rm <file>..." to update what will be committed)
+#   (use "git checkout -- <file>..." to discard changes in working directory)
+#
+#   deleted:    yum.conf
+#
+no changes added to commit (use "git add" and/or "git commit -a")
+[student@server1 config-files]$ ls
+cups       hosts.allow  issue.net       ssh          yum.repos.d
+host.conf  hosts.deny   redhat-release  sysctl.conf
+hosts      issue        resolv.conf     yum
+[student@server1 config-files]$ git checkout -- yum.conf
+[student@server1 config-files]$ git status
+# On branch master
+# Your branch is ahead of 'origin/master' by 2 commits.
+#
+nothing to commit (working directory clean)
+[student@server1 config-files]$ ls
+cups       hosts.allow  issue.net       ssh          yum.conf
+host.conf  hosts.deny   redhat-release  sysctl
+
+
+
+
+Use pull to retrieve updates made by others.
+If the changes do not conflict or overlap, others' changes are applied to the files in the local repository without human interaction:
+[student@server1 ~]$ cd config-files/
+[student@server1 config-files]$ vim hosts
+[student@server1 config-files]$ git commit -a -m 'add desktop2'
+[master 9c41d10] add desktop2
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+[student@server1 config-files]$ git push
+gituser@demo's password:
+Counting objects: 5, done.
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 322 bytes, done.
+Total 3 (delta 2), reused 0 (delta 0)
+To gituser@demo:/var/local/config-files.repo
+   94f601c..9c41d10  master -> master
+[student@server1 config-files]$ git pull
+gituser@demo's password:
+remote: Counting objects: 10, done.
+remote: Compressing objects: 100% (6/6), done.
+remote: Total 6 (delta 4), reused 0 (delta 0)
+Unpacking objects: 100% (6/6), done.
+From demo:/var/local/config-files.repo
+   9c41d10..aca2c25  master     -> origin/master
+Updating 9c41d10..aca2c25
+Fast-forward
+ hosts |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+[student@server1 config-files]$ cat hosts
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+192.168.0.250   demo demo.example.com
+192.168.0.1 desktop1 desktop1.example.com
+192.168.0.2 desktop2 desktop2.example.com
+
+To minimize conflicts, pull committed changes by others before making changes of your own.
+Conflicts will still arise if two administrators update overlapping parts of the same file.
+
+
+Create a Local Repository
+Create a directory to serve as the repository, change into that directory, and then use git init to initialize the repository and create a .git subdirectory.
+[student@server1 ~]$ mkdir my-files
+[student@server1 ~]$ cd my-files
+[student@server1 my-files]$ git init
+Initialized empty Git repository in /home/user/my-files/.git/
+Use git add in combination with git commit to populate the repository with files.
+[student@server1 my-files]$ cp ~/.bashrc bashrc
+[student@server1 my-files]$ cp ~/.bash_profile bash_profile
+[student@server1 my-files]$ git add .
+[student@server1 my-files]$ git commit -m 'account config files'
+[master (root-commit) 1cb15e8] account config files
+ 2 files changed, 20 insertions(+), 0 deletions(-)
+ create mode 100644 bash_profile
+ create mode 100644 bashrc
+[student@server1 my-files]$ vim bash_profile
+[student@server1 my-files]$ git diff
+diff --git a/bash_profile b/bash_profile
+index 3dc099a..a3679c5 100644
+--- a/bash_profile
++++ b/bash_profile
+@@ -8,5 +8,6 @@ fi
+ # User specific environment and startup programs
+
+ PATH=$PATH:$HOME/bin
++EDITOR=vim
+
+-export PATH
++export PATH EDITOR
+[student@server1 my-files]$ git commit -a -m 'defined EDITOR environment variable'
+[master 41a0605] defined EDITOR environment variable
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+ 
+ 
+ Satellite can deploy configuration files to client systems through configuration channels.
+Unlike software channels which deploy RPM packages to target systems, configuration channels deploy individual files.
+Satellite manages several types of configuration files including text files, binary files, and symbolic links.
+Satellite administrators can use command-line tools or a web interface to create configuration files.
+File contents can be imported or typed in directly.
+Security attributes of each configuration file are displayed and modified using the web interface.
+Each file’s user and group ownership, permissions, and SELinux context are specified in this way.
+When command-line tools are used, security attributes from the original system are used to determine these values.
+Satellite configuration channels support macro expansion within the contents of text files.
+Predefined values can be referenced, such as host name, IP address, profile name and ID numbers, as well as custom fields that can be defined.
+Allows templates to be created and adapted when deployed to target hosts.
+
+
+Provide early and consistent communication
+Notify everyone as early as possible to provide time to prepare and adjust.
+Extra time allows for everyone involved to plan and collaborate for a smooth change.
+Establish a change management/control meeting, process, or board that includes representatives of all the regular stakeholders in an organization.
+Changes should be discussed and signed off by all parties
+Provide a policy for minor recurring changes
+Provide a prioritization policy for changes.
+Timing is everything
+Make sure that all parties involved agree with the time frame for the change.
+Deploying when people are out of the office or during a very busy part of a sales cycle could lead to disaster.
+Provide a streamlined process for emergency changes.
+Copyright ©2015 Red Hat, Inc.
+
+0:44
+
+Change Management Best Practices
+Provide a solid execution strategy
+Detail each step that will be required to make the change.
+Document expected responses or return codes
+Document errors which may be false positives
+Make the change desirable and communicate
+Help all involved to understand the need for the change by discussing the current issues and the intended outcome of the change.
+Be ready to provide and present the facts regarding the change.
+Break down the benefits of the change to show each stakeholder how they will benefit.
+Making the change more relevant on a personal level will help to encourage change.
+Explain how this change will help the overall organization achieve its goals.
+Copyright ©2015 Red Hat, Inc.
+
+1:43
+
+Change Management Best Practices
+Prepare to back out
+Should something go wrong, have a detailed back-out plan that will bring you to the exact state you were in before the change.
+Back up configuration files and data before making changes
+Provide a plan and be prepared to test whether the back-out was successful
+Test back-out procedures in a development/test environment.
+Iron out the kinks ahead of time
+Do not deploy any changes that are untested.
+Maintain a development and/or test environment that is identical to production.
+If possible, changes should be tested by a team that is independent from the party requesting the change.
+Do not assume that because a vendor provides a patch, fix, or recommendation it is foolproof.
+Trust but verify
+Copyright ©2015 Red Hat, Inc.
+
+
+Provide a solid execution strategy
+Detail each step that will be required to make the change.
+Document expected responses or return codes
+Document errors which may be false positives
+Make the change desirable and communicate
+Help all involved to understand the need for the change by discussing the current issues and the intended outcome of the change.
+Be ready to provide and present the facts regarding the change.
+Break down the benefits of the change to show each stakeholder how they will benefit.
+Making the change more relevant on a personal level will help to encourage change.
+Explain how this change will help the overall organization achieve its goals.
+
+Prepare to back out
+Should something go wrong, have a detailed back-out plan that will bring you to the exact state you were in before the change.
+Back up configuration files and data before making changes
+Provide a plan and be prepared to test whether the back-out was successful
+Test back-out procedures in a development/test environment.
+Iron out the kinks ahead of time
+Do not deploy any changes that are untested.
+Maintain a development and/or test environment that is identical to production.
+If possible, changes should be tested by a team that is independent from the party requesting the change.
+Do not assume that because a vendor provides a patch, fix, or recommendation it is foolproof.
+Trust but verify
+
+
+Monitor the change as it is being implemented
+When possible, make changes in a phased approach.
+Closely watch all phases and only continue to the next phase when absolutely sure the current phase is complete.
+Provide a plan for notification and testing after changes are complete
+Make sure all stakeholders have solid regression testing plans ready for execution.
+Regression testing requires testing all existing and new functionality.
+Be prepared to notify stakeholders when changes are complete and the environment being changed is ready for testing.
+Implement a review process after the change
+This helps bring to light any “lessons learned” and issues with the process or organization implementing the process.
+This will also identify any issues relating to the change which may still require attention.
+Copyright ©2015 Red Hat, Inc.
+
+0:58
+
+Configuration Management Overview
+Configuration management is the task of tracking and controlling changes to source, scripts, or configuration files.
+Configuration management practices can include revision control and the establishment of baselines.
+If something goes wrong, it can determine what was changed and who changed it.
+If a configuration is working well, it can determine how to replicate changes across many hosts.
+When testing changes in a test or development environment, you can check them into a revision control system such as Git.
+Enables you to track changes, who made changes, and why changes were made.
+Environments that do not adhere to revision control are likely to experience more problems than environments that adhere to revision control policies.
+Copyright ©2015 Red Hat, Inc.
+Module Completion
+Nice job!
+Click the button below to complete this module of the course:
+Complete Module
+Copyright ©2015 Red Hat, Inc.
+
+
+Configuration management is the task of tracking and controlling changes to source, scripts, or configuration files.
+Configuration management practices can include revision control and the establishment of baselines.
+If something goes wrong, it can determine what was changed and who changed it.
+If a configuration is working well, it can determine how to replicate changes across many hosts.
+When testing changes in a test or development environment, you can check them into a revision control system such as Git.
+Enables you to track changes, who made changes, and why changes were made.
+Environments that do not adhere to revision control are likely to experience more problems than environments that adhere to revision control policies.

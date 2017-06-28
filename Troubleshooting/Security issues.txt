@@ -1,0 +1,484 @@
+Without SELinux, services can access all o+r files
+
+With SELinux, services are confined to their domain
+
+SELinux is a set of security rules that determine which process can access which files, directories, ports, etc.
+Every file, process, directory and port has a special security label called an SELinux context. * A context determines whether a process can access a file, directory or port.
+By default, access is not allowed, so explicit rules grant access.
+SELinux labels have several contexts, but we are most interested in the type context.
+Type context names usually end with _t.
+Example: The type context for the web server is httpd_t.
+A policy rule permits Apache to access files and directories with a context normally found in /var/www/html and other web server directories.
+There is no allow rule in the policy for files normally found in /tmp and /var/tmp, so access is not permitted.
+With SELinux, a malicious user could not access or write files to /tmp.
+SELinux even has rules for remote file systems such as NFS and CIFS
+
+SELinux
+SELinux can run in three modes:
+Enforcing – All SELinux rules are enforced and requests are denied.
+Permissive – No SELinux rules are enforced, but failed requests are logged. This is useful for troubleshooting or learning SELinux.
+Disabled – SELinux is disabled and will not deny or log anything.
+Set the system’s default boot time mode in /etc/sysconfig/selinux.
+Use booleans switches to change behavior of SELinux policy.
+Usually used to tune existing policy to make selective adjustments.
+Most major services that come with Red Hat Enterprise Linux have a special SELinux manual page.
+getenforce retrieves the current system SELinux mode:
+# getenforce
+Enforcing
+setenforce temporarily sets the SELinux mode with one of these options:
+0 = Permissive
+1 = Enforcing
+# setenforce 0
+# getenforce
+Permissive
+When you reboot, the mode set in /etc/sysconfig/selinux is set.
+
+SELinux
+SELinux can run in three modes:
+Enforcing – All SELinux rules are enforced and requests are denied.
+Permissive – No SELinux rules are enforced, but failed requests are logged. This is useful for troubleshooting or learning SELinux.
+Disabled – SELinux is disabled and will not deny or log anything.
+Set the system’s default boot time mode in /etc/sysconfig/selinux.
+Use booleans switches to change behavior of SELinux policy.
+Usually used to tune existing policy to make selective adjustments.
+Most major services that come with Red Hat Enterprise Linux have a special SELinux manual page.
+getenforce retrieves the current system SELinux mode:
+# getenforce
+Enforcing
+setenforce temporarily sets the SELinux mode with one of these options:
+
+
+These packages install tools to monitor and debug SELinux issues:
+setroubleshoot
+setroubleshoot-server
+audit
+dbus should also be installed and running.
+Configure auditd to start at boot time.
+With these packages installed, SELinux issues are reported in /var/log/audit/audit.log.
+sealert provides details for SELinux issues reported in /var/log/messages.
+aureport -a provides a quick report of SELinux issues.
+ausearch shows SELinux denials for certain time periods:
+ausearch -m avc
+All denials
+ausearch -m avc -ts today
+Only denials from today
+ausearch -m avc -ts recent
+Denials from the last 10 minutes
+ausearch -m avc -c daemon
+Search for denails for specified daemon only
+When SELinux issues are assigned an ID in /var/log/messages, use sealert to get more info:
+# grep setroubleshoot /var/log/messages
+setroubleshoot: SELinux is preventing httpd (httpd_t) "getattr" to /var/www/html/file1 (samba_share_t). For complete SELinux messages. run sealert -l 84e0b04d-d0ad-4347-8317-22e74f6cd020
+# sealert -l 84e0b04d-d0ad-4347-8317-22e74f6cd020
+
+By default, the Apache server is allowed to read files from /var/www/html.
+If you want to set DocumentRoot to anything outside /var/www/html, you must set the httpd_sys_content_t context to that custom directory and its contents.
+Example: Add a new document root of /var/mywww
+Look at the SELinux contexts set on /var/mywww and /var/www/html and notice the differences:
+pxeserver # ls -aldZ /var/mywww
+-rw-r--r--. root root unconfined_u:object_r:var_t:s0   /var/mywww
+pxeserver # ls -aldZ /var/www/html
+drwxr-xr-x. root root system_u:object_r:httpd_sys_content_t:s0 /var/www/html
+Update the httpd content context policy to include /var/mywww and its subdirectories.
+# semanage fcontext -a \
+    -t httpd_sys_content_t '/var/mywww(/.*)?'
+# semanage fcontext -l | grep '/var/mywww'
+/var/mywww(/.*)?   all files      system_u:object_r:httpd_sys_content_t:s0
+Check /var/my/www/index.html for proper context:
+# ls -alZ /var/mywww/index.html
+-rw-r--r--. root root unconfined_u:object_r:var_t:s0 /var/mywww/index.html
+Use restorecon to update the contexts on the files:
+pxeserver # restorecon -R /var/mywww
+pxeserver # ls -alZ /var/mywww/index.html
+-rw-r--r--. root root unconfined_u:object_r:httpd_sys_content_t:s0 /var/mywww/index.html
+Now the context is correct on the index file.
+0 = Permissive
+1 = Enforcing
+# setenforce 0
+# getenforce
+Permissive
+When you reboot, the mode set in /etc/sysconfig/selinux is set.
+
+
+Working with SELinux
+To see the current SELinux context for a process, add the -Z flag to the ps command:
+# ps axZ | grep rsyslogd
+system_u:system_r:syslogd_t:s0   1338 ?        Sl     0:00 /sbin/rsyslogd -i /var/run/syslogd.pid -c 5
+
+# ps -ZC rsyslogd
+LABEL                             PID TTY          TIME CMD
+system_u:system_r:syslogd_t:s0   1338 ?        00:00:00 rsyslogd
+To see the current SELinux context for a file or directory, add the -Z flag to the ls command:
+# ls -alZ /etc/rsyslog.conf
+-rw-r--r--. root root system_u:object_r:syslog_conf_t:s0 /etc/rsyslog.conf
+
+
+Working with SELinux
+To see the default context that should be applied to a file:
+# semanage fcontext -l |grep /etc/rsyslog.conf
+/etc/rsyslog.conf                                  all files          system_u:object_r:syslog_conf_t:s0
+To set a file back to its default context:
+# restorecon -Rv /path/to/fileordirectory
+
+To see current SELinux boolean settings:
+# getsebool -a
+Or
+# semanage boolean –l | grep boolean_name
+To set an SELinux boolean:
+# setsebool <boolean_name> <on|off>
+
+Troubleshooting SELinux Issues
+These packages install tools to monitor and debug SELinux issues:
+setroubleshoot
+setroubleshoot-server
+audit
+dbus should also be installed and running.
+Configure auditd to start at boot time.
+With these packages installed, SELinux issues are reported in /var/log/audit/audit.log.
+sealert provides details for SELinux issues reported in /var/log/messages.
+aureport -a provides a quick report of SELinux issues.
+ausearch shows SELinux denials for certain time periods:
+ausearch -m avc
+All denials
+ausearch -m avc -ts today
+Only denials from today
+ausearch -m avc -ts recent
+Denials from the last 10 minutes
+ausearch -m avc -c daemon
+Search for denails for specified daemon only
+When SELinux issues are assigned an ID in /var/log/messages, use sealert to get more info:
+# grep setroubleshoot /var/log/messages
+setroubleshoot: SELinux is preventing httpd (httpd_t) "getattr" to /var/www/html/file1 (samba_share_t). For complete SELinux messages. run sealert -l 84e0b04d-d0ad-4347-8317-22e74f6cd020
+# sealert -l 84e0b04d-d0ad-4347-8317-22e74f6cd020
+
+
+Authentication
+Red Hat Enterprise Linux supports local and network based authentication.
+Local authentication consists of:
+/etc/passwd – for user information
+/etc/shadow – for password information
+/etc/group – for group information
+Network based authentication can come from several sources, for example:
+LDAP
+Kerberos
+Winbind
+Red Hat Identity Management (IPA), is an integrated LDAP and Kerberos-based Identity Management solution.
+Red Hat Enterprise Linux uses the sssd daemon to interface with authentication sources.
+All authentication must go through the Pluggable Authentication Mechanism (PAM).
+
+Password File Review
+Public user information is stored in /etc/passwd.
+Contains list of users (1 per line) with colons separating data about each user.
+/etc/passwd must be world readable and retrievable by any process on the system by any user.
+File format: username:x:uid:gid:GECOS:home_dir:shell
+username
+The user’s login name, usually lower case, no spaces or special characters, must match /etc/shadow
+x
+A legacy place holder for password, not used
+uid
+A positive integer value unique to each user
+gid
+A positive integer value shared by a group
+GECOS
+Free form text providing a description or name of the user
+home_dir
+The user’s home directory
+shell
+The user’s login shell
+
+Shadow File Review
+Secure passwords are stored in /etc/shadow.
+Contains a list of users (1 per line) with colons separating data about each user, including password hashes.
+/etc/shadow must be readable only by root.
+File format: username:hash:lc:minage:maxage:warning:inactive:expiration
+username
+The user’s login name, usually lower case, no space or special characters, must match /etc/passwd
+hash
+Specifies the user’s password hashing algorithm, salt, and encrypted hash
+lc
+The date of the last password change (in epoch time)
+minage
+Minimum password age (in days, 0 = no minimum)
+maxage
+Maximum password age (in days)
+warning
+Password warning period (in days, 0 = no minimum)
+inactive
+Password inactive period (in days)
+expiration
+Account expiration (in epoch time)
+
+Group File Review
+Public group information is stored in /etc/group.
+Contains a list of users (1 per line) with colons separating data about each group.
+/etc/group must be world readable and retreivable by any process on the system by any user.
+File format: groupname:x:gid:list_of_usernames
+groupname
+The group’s name, usually lower case, no spaces or special characters
+x
+Password field, rarely used (legacy)
+gid
+A positive integer value unique to each group
+list_of_usernames
+A comma-delimited list of usernames that match users in /etc/passwd that are members of this group
+
+
+Authentication Issues
+When investigating authentication issues, check /var/log/secure first.
+Shows if user was denied for incorrect password, username, time limits, etc.
+Use getent to get passwd and group information.
+getent {group|passwd} name shows both local and remote database entries.
+Using getent with shadow only works on local entries.
+Example: getent shows group entries
+# getent group groupname
+By default, running getent against passwd or group databases without specifying a user or group name shows all users or groups in local files only.
+If the expected user or group does not show up using getent, there is probably a problem communicating with the LDAP server.
+
+
+Local Authentication Troubleshooting
+To determine if an account is locked, use:
+# passwd -S newguy
+newguy LK 2013-05-28 0 99999 7 -1 (Password locked.)
+In /etc/shadow, the user’s password field starts with !, if the password is locked:
+newguy:!$1$rmDD9bZ5$fNMmXxXq38jQ89WvTwkFh0:15743:0:99999:7:::
+To unlock a user:
+# usermod -U newguy
+If the user forgot his or her password, use passwd to change the user’s password.
+Be sure to run passwd with a username as an argument.
+Running passwd without a username changes root’s password!
+# passwd forgetful_user
+Make sure the user’s password has not expired.
+To view and set the user’s /etc/shadow settings use chage:
+# chage -l newguy
+Last password change                                   : Feb 07, 2013
+Password expires                                       : never
+Password inactive                                      : never
+Account expires                                        : never
+Minimum number of days between password change         : 0
+Maximum number of days between password change         : 99999
+Number of days of warning before password expires      : 7
+
+
+LDAP Authentication Overview
+LDAP authentication provides a network-based approach to manage users, groups, passwords, access controls, and much more.
+LDAP directory servers arrange entries in a searchable tree structure.
+Use LDAP over SSL to encrypt traffic that may contain user information and passwords.
+CA (Certificate Authority) certificate used by LDAP server must be available on all clients.
+Recommended tools to configure non-IPA LDAP client:
+authconfig
+auth-config-tui.
+
+
+LDAP Authentication Configuration Review
+IPA client is configured with ipa-client-install.
+To configure a Red Hat Enterprise Linux system to use an LDAP server, you must know:
+Server’s FQDN (fully-qualified domain name)
+Base DN (distinguished name) in which to search for users
+Base DN is the tree within the LDAP server containing the user and group entries.
+Example: ou=People,dc=example,dc=com
+Check the following:
+LDAP client configuration is stored at /etc/openldap/ldap.conf.
+IPA LDAP configuration is stored at /etc/ipa/default.conf.
+sssd configuration is stored at /etc/sssd/sssd.conf.
+sssd.conf may contain \_srv_ as a server name. This causes the IPA client to use DNS to discover its server; this is normal.
+For IPA clients, /etc/nsswitch.conf should have sss configured for several name services:
+passwd:     files sss
+shadow:     files sss
+group:      files sss
+services:   files sss
+netgroup:   files sss
+
+Use ldapsearch (provided by the openldap-clients package) to test if your system is properly configured to talk to LDAP:
+# ldapsearch -x -ZZ -H ldap://ldap.server.fqdn -b dc=base,dc=dn
+Dumps all publicly-available information from LDAP server.
+If ldapsearch fails, check these common LDAP connectivity issues:
+LDAP server is down.
+DNS cannot resolve the LDAP server.
+# grep -i uri /etc/openldap/ldap.conf
+URI ldaps://ldap00.example.com
+The 389/636 ports on the LDAP server are unreachable; try:
+# ping ldap00.example.com
+# openssl s_client -connect ldap00.example.com:636
+The CA cert on the client is invalid. Make sure any certs specified in /etc/openldap/ldap.conf are current.
+# grep -i cert /etc/openldap/ldap.conf
+TLS_CACERT /etc/ipa/ca.crt
+# ls -al /etc/ipa/ca.crt
+-rw-r--r--. 1 root root 1333 Dec  7 08:26 /etc/ipa/ca.crt
+
+Kerberos Review
+Kerberos is a network-based secure authentication method.
+Authentication occurs without sending passwords over the network.
+Passes “Tickets”, which are encrypted using the user’s password as the encryption key.
+When a user authenticates, the Kerberos client asks the Kerberos server, or Key Distribution Center (KDC), for a ticket.
+If the request is valid, the user receives a ticket that is valid for a finite amount of time.
+Important components for configuring Kerberos clients:
+Kerberos Realm – A domain such as EXAMPLE.COM.
+KDC – The Kerberos server that issues tickets.
+Kerberos Admin Server – The Kerberos server that allows remote administration, such as password changes.
+
+Kerberos Troubleshooting
+Run kinitusername to test authentication.
+If successful, there is no resulting text after entering the password.
+$ kinit user1
+Password for user1@EXAMPLE.COM:
+Run klist to see the resulting ticket.
+$ klist
+Ticket cache: FILE:/tmp/krb5cc_1403200001_4c7VJR
+Default principal: user1@EXAMPLE.COM
+
+Valid starting     Expires            Service principal
+02/11/13 10:02:06  02/12/13 10:02:04  krbtgt/EXAMPLE.COM@EXAMPLE.COM
+
+Kerberos stores its configuration file at /etc/krb5.conf.
+Be sure the following are all correct: default_realm declaration, realms section, and domain_realm section.
+Example:
+[libdefaults]
+  default_realm = IDM.EXAMPLE.COM
+...
+
+[realms]
+  IDM.EXAMPLE.COM = {
+    pkinit_anchors = FILE:/etc/ipa/ca.crt
+  }
+
+[domain_realm]
+  .idm.example.com = IDM.EXAMPLE.COM
+  idm.example.com = IDM.EXAMPLE.COM
+A host key is created at /etc/krb5.keytab when a system is added to Kerberos.
+Make sure this file exists and is recent.
+If using IPA, retrieve it as follows:
+# ipa-getkeytab -s ipaserver.example.com -p host/foo.example.com \
+  -k /etc/krb5.keytab \
+  -D fqdn=foo.example.com,cn=computers,cn=accounts,dc=example,dc=com\
+  -w password
+  
+  
+  sssd (System Security Services Daemon) offers access to remote identity and authentication mechanisms, referred to as providers.
+sssd allows providers to be configured as sssd back ends.
+Abstracts actual (local and network) identity and authentication sources.
+Allows any kind of identity data provider to be plugged in.
+A domain is a database which can serve as a provider’s identity information.
+Multiple identity providers are supported.
+Allows two or more identity servers to act as separate user namespaces .
+Configuration file exists at /etc/sssd/sssd.conf.
+Usually maintained by authconfig, authconfig-tui, or IPA client installation script
+Should not be altered directly
+sssd can provide a credentials cache.
+Reduces load to LDAP servers.
+Provides authentication information if LDAP servers become inaccessible.
+Potentially hides an authentication server that has gone down, until the cache expires.
+sssd provides many logs in /var/log/sssd
+Set the debug level for sssd logs in /etc/sssd/sssd.conf:
+debug_level=10
+
+
+Host-Based Firewall Review
+netfilter subsystem in Linux kernel filters network traffic.
+firewalld is the user-space component that manages firewall rules.
+firewalld splits traffic into zones based on the source address and the network interface it arrives on.
+Each zone has its own firewall rules.
+firewall-config and firewall-cmd control firewall rules.
+host-based firewalls control inbound and outbound traffic at the host level
+Process known as packet filtering
+firewalld has other features such as Network Address Translation (NAT) and IP forwarding.
+On a system running libvirt, restart libvirtd after the firewall.
+It makes changes to the rules for NAT purposes.
+
+Predefined Zones
+firewalld ships with a number of predefined zones.
+Default zone and interfaces are set to public.
+lo interface is treated as if it is in the trusted zone.
+By default, all zones permit any incoming traffic which is part of a communication initiated by the system, and all outgoing traffic.
+Zone name	Default configuration
+trusted
+Allow all incoming traffic.
+home
+Reject incoming traffic unless related to outgoing traffic or matching the ssh, mdns, ipp-client, samba-client, or dhcpv6-client predefined services.
+internal
+Reject incoming traffic unless related to outgoing traffic or matching the ssh, mdns, ipp-client, samba-client, or dhcpv6-client predefined services (same as the home zone to start with).
+work
+Reject incoming traffic unless related to outgoing traffic or matching the ssh, ipp-client, or dhcpv6-client predefined services.
+public
+Reject incoming traffic unless related to outgoing traffic or matching the ssh or dhcpv6-client predefined services. The default zone for newly-added network interfaces.
+external
+Reject incoming traffic unless related to outgoing traffic or matching the ssh predefined service. Outgoing IPv4 traffic forwarded through this zone is masqueraded to look like it originated from the IPv4 address of the outgoing network interface.
+dmz
+Reject incoming traffic unless related to outgoing traffic or matching the ssh predefined service.
+block
+Reject all incoming traffic unless related to outgoing traffic.
+drop
+Drop all incoming traffic unless related to outgoing traffic (do not even respond with ICMP errors).
+
+
+Predefined Services
+firewalld ships with a number of predefined services.
+Service definitions permit traffic for particular network services to pass through the firewall.
+Default configuration of predefined services:
+Service name	Configuration
+ssh
+Local SSH server. Traffic to 22/tcp.
+dhcpv6-client
+Local DHCPv6 client. Traffic to 546/udp on the fe80::/64 IPv6 network.
+ipp-client
+Local IPP printing. Traffic to 631/udp.
+samba-client
+Local Windows file and print sharing client. Traffic to 137/udp and 138/udp.
+mdns
+Multicast DNS (mDNS) local-link name resolution. Traffic to 5353/udp to the 224.0.0.251 (IPv4) or ff02::fb (IPv6) multicast addresses.
+
+Main ways for system administrators to interact with firewalld:
+Directly editing configuration files in /etc/firewalld/
+Using the graphical firewall-config tool
+Using firewall-cmd from the command line
+Configure Firewall Settings With firewall-cmd
+firewall-cmd is installed as part of the main firewalld package.
+Perform same actions with firewall-cmd as firewall-config.
+
+Frequently Used firewall-cmd Commands
+Unless specified, almost all commands work on the runtime configuration, unless the --permanent option is specified.
+Many commands listed take the --zone=<ZONE> option to determine which zone they affect.
+firewall-cmd Commands	Explanation
+--get-default-zone
+Query the current default zone.
+--set-default-zone=<ZONE>
+Set the default zone. This changes both the runtime and the permanent configuration.
+--get-zones
+List all available zones.
+--get-active-zones
+List all zones currently in use (have an interface or source tied to them), along with their interface and source information.
+--add-source=<CIDR> [--zone=<ZONE>]
+Route all traffic coming from the IP address or network/netmask <CIDR> to the specified zone. If no --zone= option is provided, the default zone will be used.
+--remove-source=<CIDR> [--zone=<ZONE>]
+Remove the rule routing all traffic coming from the IP address or network/netmask <CIDR> from the specified zone. If no --zone= option is provided, the default zone will be used.
+--add-interface=<INTERFACE> [--zone=<ZONE>]
+Route all traffic coming from <INTERFACE> to the specified zone. If no --zone= option is provided, the default zone will be used.
+--change-interface=<INTERFACE> [--zone=<ZONE>]
+Associate the interface with <ZONE> instead of its current zone. If no --zone= option is provided, the default zone will be used.
+--list-all [--zone=<ZONE>]
+List all configured interfaces, sources, services, and ports for <ZONE>. If no --zone= option is provided, the default zone will be used.
+--list-all-zones
+Retrieve all information for all zones. (Interfaces, sources, ports, services, etc.)
+--add-service=<SERVICE> [--zone=<ZONE>]
+Allow traffic to <SERVICE>. If no --zone= option is provided, the default zone will be used.
+--add-port=<PORT/PROTOCOL> [--zone=<ZONE>]
+Allow traffic to the <PORT/PROTOCOL> port(s). If no --zone= option is provided, the default zone will be used.
+--remove-service=<SERVICE> [--zone=<ZONE>]
+Remove <SERVICE> from the allowed list for the zone. If no --zone= option is provided, the default zone will be used.
+--remove-port=<PORT/PROTOCOL> [--zone=<ZONE>]
+Remove the <PORT/PROTOCOL> port(s) from the allowed list for the zone. If no --zone= option is provided, the default zone will be used.
+--reload
+Drop the runtime configuration and apply the persistent configuration.
+
+firewall-cmd Examples
+Default zone is set to dmz
+All traffic coming from 192.168.0.0/24 is assigned to the internal zone
+Network ports for mysql are opened on the internal zone
+# firewall-cmd --set-default-zone=dmz
+# firewall-cmd --permanent --zone=internal --add-source=192.168.0.0/24
+# firewall-cmd --permanent --zone=internal --add-service=mysql
+# firewall-cmd --reload
+Complex Rules
+If basic firewalld syntax is not enough, add rich-rules to write more complex rules.
+If rich-rules syntax is not enough, use Direct Configuration rules.
+A raw iptables syntax that is mixed with the firewalld rules.
+For more info, see firewall-cmd(1), firewall-config(1), firewalld(1), firewalld.zone(5) and firewalld.zones(5) man pages.

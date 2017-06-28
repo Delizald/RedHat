@@ -1,0 +1,30 @@
+Teiid Designer
+Access Teiid Designer in JBoss Developer Studio perspective
+Create source models from data sources
+Inspect data with preview function
+
+Source Model
+Models created from a variety of physical data sources
+1:1 mapping with the data source
+Support for ANSI SQL-92 in Teiid
+NoSQL and other sources modeled as relational in Teiid
+
+Connector Architecture
+Integrates data from the enterprise information system (EIS) into Teiid
+Needs two components: translator and resource adapter
+Translates Teiid commands to native commands
+Handles communications with EIS via resource adapter
+
+
+Custom Translator
+Integrates with sources that do not have an out-of-the-box translator
+Uses ExecutionFactory as main entry point
+Builds as a Maven project and packaged as JBoss EAP module
+Deploys in a virtual database (VDB) to enable code
+
+
+Integration with Red Hat JBoss Data Grid
+Use both as data source and external materialization target
+Integrate via Teiid translator and resource adapter
+Configure local cache in library model
+Configure remote cache via hot rod client

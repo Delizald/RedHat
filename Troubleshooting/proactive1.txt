@@ -1,0 +1,202 @@
+Forwarding Messages via UDP to a Central Log Server
+Decide on the types of messages (facility and priority) and the name or IP address of the central log server.
+Add a line similar to the following to /etc/rsyslog.conf:
+*.info      @server1
+Restart the service:
+[root@desktop1 ~]# systemctl restart rsyslog
+Test the forwarding rule with the logger command:
+[root@desktop1 ~]# logger "Hello from desktop1"
+[root@desktop1 ~]# tail /var/log/messages
+Jan 18 14:24:37 desktop1 root: Hello from desktop1
+[root@server1 ~]# tail /var/log/messages
+Jan 18 14:24:37 desktop1 root: Hello from desktop1
+For more info, see:
+Red Hat Enterprise Linux 7 System Administrator’s Guide, Chapter 18: Viewing and Managing Log Files
+rsyslog.conf(5) and logger(1) man pages
+Copyright ©2015 Red Hat, Inc.
+
+1:06
+
+Monitoring: Detecting Hard Drive Failures
+Hard drives die. It is not a question of if a drive will die but rather when.
+If you know that a drive is dying, you can plan for its replacement instead of responding to an emergency.
+SMART = Self-Monitoring, Analysis and Reporting Technology
+SMART is built-in to almost all modern hard drives.
+In Red Hat Enterprise Linux systems, the smartd SMART-daemon polls all of the hard drives every 30 minutes. ** If smartd sees that a drive is dying, it issues a message to /var/log/messages and sends an email message to the root user on the local system.
+You can specify an alternate, centralized email address in /etc/smartmontools/smartd.conf.
+Copyright ©2015 Red Hat, Inc.
+
+1:16
+
+Monitoring: Detecting Hard Drive Failures
+Another method of talking to a SMART-enabled drive is with the smartctl tool.
+One method of using smartctl is to ask for only the overall health status:
+[root@server1 ~]# smartctl -H /dev/sda
+smartctl 6.2 2013-07-26 r3841 [x86_64-linux-3.10.0-123.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF READ SMART DATA SECTION ===
+SMART Health Status: OK
+For more detailed information, query all the individual counters: smartctl -a /dev/sda. The column you are interested in is RAW_VALUE.
+To tell the drive to perform a test immediately, use smartctl -t testtype /dev/sda, where testtype is either offline, long, or short.
+To view the output of a selftest, (long, short), run smartctl -l selftest /dev/sda.
+To get the output of the offline test or the errors from any other test, run smartctl -l error /dev/sda.
+For more info, see smartd(8), smartd.conf(5), and smartctl(8) man pages.
+Copyright ©2015 Red Hat, Inc.
+
+
+
+Another method of talking to a SMART-enabled drive is with the smartctl tool.
+One method of using smartctl is to ask for only the overall health status:
+[root@server1 ~]# smartctl -H /dev/sda
+smartctl 6.2 2013-07-26 r3841 [x86_64-linux-3.10.0-123.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF READ SMART DATA SECTION ===
+SMART Health Status: OK
+For more detailed information, query all the individual counters: smartctl -a /dev/sda. The column you are interested in is RAW_VALUE.
+To tell the drive to perform a test immediately, use smartctl -t testtype /dev/sda, where testtype is either offline, long, or short.
+To view the output of a selftest, (long, short), run smartctl -l selftest /dev/sda.
+To get the output of the offline test or the errors from any other test, run smartctl -l error /dev/sda.
+
+
+AIDE = Advanced Intrusion Detection Environment
+AIDE is a tool to check the integrity of files on the system.
+When the system is in a known good state, it is used to scan the system and collect information about installed d files:
+Checksums
+Permissions
+Other characteristics
+Information is placed in a database file which can be stored offline.
+Use AIDE to compare the state of the system against the stored database and check for any changes.
+
+
+
+Steps to Deploy AIDE
+The following is an example of deploying AIDE on server1.
+Install the aide package.
+[root@server1 ~]# yum install -y aide
+... Output omitted ...
+Customize /etc/aide.conf to your liking.
+Example
+@@define DBDIR /var/lib/aide 
+@@define LOGDIR /var/log/aide
+
+database=file:@@{DBDIR}/aide.db.gz 
+database_out=file:@@{DBDIR}/aide.db.new.gz 
+gzip_dbout=yes
+report_url=file:@@{LOGDIR}/aide.log 
+report_url=stdout
+
+# R is short for p+i+n+u+g+s+m+c+acl+selinux+xattrs+md5
+NORMAL = R+rmd160+sha256 
+PERMS = p+i+u+g+acl+selinux
+
+/ NORMAL 
+!/etc/.*~
+/root/..* PERMS
+Defines macros that can be used in /etc/aide.conf.
+Configuration directive defining the location of the AIDE database. Note that this example uses a macro defined above.
+Configuration directive defining the location in which aide --init will save a newly created database file.
+Where the results of aide --check will be reported. Note that multiple locations are allowed.
+Group definition line. Files selected by AIDE in group NORMAL will store information about its regular permissions, inodes, number of links, user and group, size, mtime and ctime, POSIX ACLs, SELinux context, extended attributes, MD5 checksum, RMD160 checksum, and SHA256 checksum.
+Selection lines. The first one adds all files under / to be checked in group NORMAL; the second exempts all files in /etc that end in ~ from being checked; the third specifies that all files under /root that start with a period (.)te should be checked in group PERMS only. Note that this uses regular expression syntax.
+Run /usr/sbin/aide --init to build the initial database. This can take a while as it creates a gzipped-database called /var/lib/aide/aide.db.new.gz.
+[root@server1 ~]# aide --init
+
+AIDE, version 0.15.1
+
+### AIDE database at /var/lib/aide/aide.db.new.gz initialized.
+Store /etc/aide.conf, /usr/sbin/aide and /var/lib/aide/aide.db.new.gz in a secure location (not on this same system!). Alternatively, extract a signature of these files so they can be verified in the future.
+Copy /var/lib/aide/aide.db.new.gz to /var/lib/aide/aide.db.gz (the expected name).
+[root@server1 ~]# cd /var/lib/aide
+[root@server1 aide]# cp aide.db.new.gz aide.db.gz
+[root@server1 aide]# cd
+
+
+Modify a file on your system to be different.
+[root@server1 ~]# echo shiny new >> /bin/tcsh
+Run /usr/sbin/aide --check to check your system for inconsistencies.
+[root@server1 ~]# aide --check
+AIDE 0.15.1 found differences between database and filesystem!!
+Start timestamp: 2014-12-15 08:22:04
+
+Summary:
+  Total number of files:        107530
+  Added files:                  9
+  Removed files:                0
+  Changed files:                10
+
+
+---------------------------------------------------
+Added files:
+---------------------------------------------------
+
+... Output omitted ...
+
+---------------------------------------------------
+Changed files:
+---------------------------------------------------
+
+changed: /usr/bin/tcsh
+... Output omitted ...
+Results are displayed on standard output and in /var/log/aide/aide.log by default.
+If you know about these changes, you can run aide --update to update your database and store it in a secure location again.
+For more info, see:
+aide(1) and aide.conf(5) man pages
+AIDE Quick Start: /usr/share/doc/aide-*/README.quickstart
+AIDE Manual: /usr/share/doc/aide-*/manual.html
+
+
+
+
+
+
+
+================================================================
+
+sar = System Activity Reporter
+sar is provided by the sysstat package and does the following:
+Collects information about system activity from the operating system at a particular point in time.
+Takes a sample of data over a selected time period, either once or on some repeating schedule.
+Collected information includes memory usage, disk I/O, network activity, and so on.
+There are two modes in which sar operates:
+When sysstat is installed, a cron job is set up that takes a one second sample of system activity every ten minutes and saves it to a file.
+Use the sar command to read this information.
+Run sar from the command line to collect specific data, averaged over a certain period of time in seconds, a specified number of times.
+
+
+
+Deploying the sar Command
+Install the sysstat package. This package provides cron scripts (/etc/cron.d/sysstat) that will gather data automatically.
+[root@server1 ~]# cat /etc/cron.d/sysstat
+
+# Run system activity accounting tool every 10 minutes
+*/10 * * * * root /usr/lib64/sa/sa1 1 1
+# 0 * * * * root /usr/lib64/sa/sa1 600 6 &
+# Generate a daily summary of process accounting at 23:53
+53 23 * * * root /usr/lib64/sa/sa2 -A
+The first column of sar output is the time of the recorded statistics.
+To ensure this column is always in a format you can parse, prefix your sar commands with LANG=C to get a unified time format.
+To make this the default for your session, use export LANG=C.
+Example sar commands:
+sar -A displays all information collected today.
+sar -u 2 5 displays five samples of system CPU usage spaced 2 seconds apart.
+sar -r displays memory statistics.
+sar -S displays swap space utilization statistics.
+sar -b displays I/O statistics.
+To generate useful output, add awk parsing:
+[root@server1 ~]# export LANG=C
+[root@server1 ~]# sar -r | tail -n+5 | awk '{print $1,$4,$8}'
+10:20:01 %memused %swpused
+10:30:01 92.28 0.05
+10:40:01 92.28 0.05
+Average: 92.28 0.05
+
+
+Nagios is a free open source monitoring tool.
+Provided via the EPEL (Extra Packages for Enterprise Linux) repository from the Fedora project
+Not supported by Red Hat
+Modular system consisting of a core nagios package with additional functionality provided by plug-ins
+Plug-ins can run on local machines to provide information not readily available via the network
+Flexible configuration allows definitions of time periods, admin groups, system groups, and custom command sets
+Web-based interface on main nagios server allows configuring tests and settings for Nagios and hosts it is monitoring

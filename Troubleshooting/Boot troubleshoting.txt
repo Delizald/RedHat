@@ -1,0 +1,176 @@
+Red Hat Enterprise Linux—Boot Process Overview
+Boot process stages:
+Hardware (BIOS/UEFI)
+Boot loader (grub2)
+kernel and initramfs
+systemd
+To reboot a system, use systemctl reboot.
+To power down a system, use systemctl poweroff.
+To switch to a new target at runtime, use systemctl isolate desired.target.
+To query the default target, use systemctl get-default.
+To set the default target, use systemctl set-default.
+To select a different target at boot, use systemd.unit= on the kernel command line.
+
+Boot Process Details
+The machine is powered on. The system firmware (UEFI or BIOS) runs a Power-On Self-Test (POST), and starts to initialize some of the hardware.
+Configuration: Use the system BIOS/UEFI configuration screens. To reach these screens, press a certain key or key combination, such as F2, during the early part of the boot process.
+The system firmware searches for a bootable device, either configured in the UEFI boot firmware or by searching for a Master Boot Record (MBR) on all disks, in the order configured in the BIOS.
+Configuration: Use the system BIOS/UEFI configuration screens.
+The system firmware reads a boot loader from disk, then passes control of the system to the boot loader. On a Red Hat Enterprise Linux 7 system, this is typically grub2.
+Configuration: Use grub2-install.
+The boot loader loads its configuration from disk, and presents a menu of configurations to boot.
+Configuration: Use /etc/grub.d/, /etc/default/grub, and if you are not using manual configuration, you can also use /boot/grub2/grub.cfg.
+After the user makes a choice (or a timeout occurs), the boot loader loads the configured kernel and initramfs from disk and places them in memory. On Red Hat Enterprise Linux 7, initramfs contains an entire usable system.
+Configuration: Use /etc/dracut.conf.
+Boot Process Details
+The boot loader hands control of the system to the kernel, passing in any options specified on the kernel command line in the boot loader, and the location of initramfs in memory.
+Configuration: Use /etc/grub.d/, /etc/default/grub, and if you are not using manual configuration, you can also use /boot/grub2/grub.cfg.
+The kernel initializes all hardware for which it can find a driver in initramfs, then executes /sbin/init from initramfs as PID 1. On Red Hat Enterprise Linux initramfs contains a working copy of systemd as /sbin/init, as well as a udev daemon.
+Configuration: Use the init= command-line parameter.
+The systemd instance from initramfs executes all units for initrd.target, which is the target. This includes mounting the root file system on /sysroot.
+Configuration: Use /etc/fstab.
+The kernel root file system is switched (pivoted) from the initramfs root file system to the system root file system that was previously mounted on /sysroot. Then systemd re-executes itself using the copy of systemd installed on the system.
+systemd looks for a default target, either passed in from the kernel command line or configured on the system, and then starts (and stops) units to comply with the configuration for that target, which solves dependencies between units automatically.
+Configuration: Use /etc/systemd/system/default.target or /etc/systemd/system/.
+
+Boot, Reboot, and Shut Down
+Use systemctl to power off or reboot a running system from the command line.
+Use systemctl poweroff to stop all running services, unmount all file systems (or remount them as read-only when they cannot be unmounted), and then power down the system.
+Use systemctl reboot to stop all running services, unmount all file systems, and then reboot the system.
+systemctl halt and halt are also available to stop the system, but unlike their poweroff equivalents, these commands do not power off the system; they bring a system down to a point where it is safe to manually power it off.
+
+
+Table 1. Selecting a systemd Target
+Target	Purpose
+graphical.target
+Supports multiple users with graphical and text-based logins.
+multi-user.target
+Supports multiple users with text-based logins only.
+rescue.target
+Provides an sulogin prompt after completing basic system initialization.
+emergency.target
+Provides an sulogin prompt after completing an initramfs pivot and mounting (read only) on the system root.
+A target can be part of another target. You can view these dependencies from the command line:
+[root@server1 ~]# systemctl list-dependencies graphical.target | grep target
+To see an overview of all available targets:
+[root@server1 ~]# systemctl list-units --type=target --all
+To see an overview of all targets installed on disk:
+[root@server1 ~]# systemctl list-unit-files --type=target --all
+Copyright ©2015 Red Hat, Inc.
+
+Selecting a Target at Runtime
+Use systemctl isolate on a running system to switch to a different target.
+[root@server1 ~]# systemctl isolate multi-user.target
+Isolating a target stops all services not required by that target (and its dependencies), and starts any required services that have not yet been started.
+
+Setting a Default Target
+The systemctl tool comes with two commands to manage the default.target symbolic link: get-default and set-default.
+[root@server1 ~]# systemctl get-default
+multi-user.target
+[root@server1 ~]# systemctl set-default graphical.target
+rm '/etc/systemd/system/default.target'
+ln -s '/usr/lib/systemd/system/graphical.target' '/etc/systemd/system/default.target'
+[root@server1 ~]# systemctl get-default
+graphical.target
+
+Selecting a Different Target at Boot Time
+To select a different target at boot time, append systemd.unit= to the kernel command line from the boot loader. This change affects only a single boot, making it a useful troubleshooting tool.
+Example: Boot the system into a rescue shell
+systemd.unit=rescue.target
+How to Select a Different Target for Red Hat Enterprise Linux 7 Systems
+Boot or reboot the system.
+Interrupt the boot loader menu countdown by pressing any key.
+Move the cursor to the entry you want to start.
+Press e to edit the current entry.
+Move the cursor to the line that starts with linux16. This is the kernel command line.
+Append systemd.unit=desired.target to the kernel command line.
+Press Ctrl+x to boot with these changes.
+For more info, see: * bootup(7), dracut.bootup(7), systemd.target(5), systemd.special(7), sulogin(8), and systemctl(1) man pages
+GNU GRUB Manual: info grub2
+
+Use systemd.unit=rescue.target on the kernel command line to interrupt the boot process before control is handed over from initramfs. The system is mounted (read-only) under /sysroot.
+Use journalctl to filter for specific boots with the -b option.
+Use debug-shell.service to get an automatic root shell early in the boot sequence.
+
+
+Recovering the Root Password
+On Red Hat Enterprise Linux 7, you can pause the scripts that run from initramfs at certain points, provide a root shell, and then continue when that shell exits. While this is mostly meant for debugging, you can also use this technique to recover a lost root password:
+Reboot the system.
+Interrupt the boot loader countdown by pressing any key.
+Move the cursor to the entry that you want to boot.
+Press e to edit the selected entry.
+Move the cursor to the kernel command line.
+Append systemd.unit=rescue.target.
+Press Ctrl+x to boot with the changes.
+At this point, a root shell is presented, with the root file system for the actual system mounted as read-only on /sysroot.
+SELinux is not yet enabled, so any new files being created will not have an SELinux context. Some tools (such as passwd) first create a new file, then move it in place of the file they are intended to edit, effectively creating a new file without an SELinux context.
+
+Recovering the Root Password
+To recover the root password from this point:
+Remount /sysroot as read-write.
+switch_root:/# mount -oremount,rw /sysroot
+Switch into a chroot jail, where /sysroot is treated as the root of the file system tree.
+switch_root:/# chroot /sysroot
+Set a new root password:
+sh-4.2# passwd root
+Make sure that all unlabeled files (including /etc/shadow) get relabeled during boot.
+sh-4.2# touch /.autorelabel
+Type exit twice.
+
+Using journalctl
+Make sure that persistent journald logging is enabled:
+[root@server1 ~]# mkdir -p -m2775 /var/log/journal
+[root@server1 ~]# chown :systemd-journal /var/log/journal
+[root@server1 ~]# killall -USR1 systemd-journald
+Use the -b option with journalctl to view all messages rated as an error or worse from the previous boot:
+[root@server1 ~]# journalctl -b-1 -p err
+
+
+Diagnose and Repair systemd Boot Issues
+Early Debug Shell: Run systemctl enable debug-shell.service to spawn a root shell on TTY9 (Ctrl+Alt+F9) early in the boot sequence.
+Disable debug-shell.service when you are done debugging. It leaves an unauthenticated root shell open to anyone with local console access.
+Emergency and Rescue Targets: Append either systemd.unit=rescue.target or systemd.unit=emergency.target to the kernel command line from the boot loader to spawn into a special rescue or emergency shell instead of starting normally.
+Stuck Jobs: Use systemctl list-jobs to inspect the current job list. Any jobs listed as running must complete before the jobs listed as waiting can continue.
+For more info, see dracut.cmdline(7), systemd-journald(8), journalctl(1), sushell(8), and systemctl(1) man pages.
+/usr/lib/systemd/system/debug-shell.service
+
+systemd displays an emergency shell in most cases dealing with file system issues.
+emergency.target can also be used to diagnose and fix file system issues.
+Problem	Result
+Corrupt file system
+systemd attempts an fsck. If the problem is too serious for an automatic fix, the user is prompted to run fsck manually from an emergency shell.
+Non-existent device/UUID referenced in /etc/fstab
+systemd waits for a set amount of time for the device to become available. If the device does not become available, the user is dropped to an emergency shell after the timeout.
+Non-existent mount point in /etc/fstab
+systemd creates the mount point if possible; otherwise, it drops to an emergency shell.
+Incorrect mount option specified in /etc/fstab
+The user is dropped to an emergency shell.
+When using the automatic recovery shell during file system issues, remember to issue a systemctl daemon-reload after editing /etc/fstab. Without this reload, systemd continues using the old version.
+For more info, see systemd-fsck(8), systemd-fstab-generator(3), and systemd.mount(5) man pages.
+
+
+Use e and Ctrl+x to edit boot loader entries in memory, then boot.
+Use grub2-mkconfig > /boot/grub2/grub.cfg to regenerate the boot loader configuration.
+Use grub2-install to reinstall the boot loader.
+grub2 can be used on both BIOS and UEFI systems, and supports booting almost any operating system that runs on modern hardware.
+grub2-mkconfig looks at /etc/default/grub for options, and then it uses a set of scripts in /etc/grub.d/ to generate a configuration file.
+To make permanent changes to the boot loader configuration, edit the configuration files listed previously, and then run the following command:
+[root@server1 ~]# grub2-mkconfig > /boot/grub2/grub.cfg
+
+Important Directives
+Bootable entries are encoded inside menuentry blocks.
+linux16 and initrd16 lines point to the kernel to be loaded from disk and the initramfs files to be loaded.
+Use Tab completion to find these files during interactive editing at boot.
+set root lines inside those blocks point to the file system from which grub2 should load the kernel and initramfs files.
+The syntax is harddrive,partition
+hd0 is the first hard drive in the system
+hd1 is the second, etc.
+Partitions are indicated as msdos1 for the first MBR partition, or gpt1 for the first GPT partition on that drive.
+
+Reinstalling the Boot Loader
+Use grub2-install to reinstall the boot loader.
+On BIOS systems, provide the disk where grub2 should be installed in the MBR as an argument.
+On UEFI systems, no arguments are necessary when the EFI system partition is mounted on /boot/efi.
+For more info, see:
+GNU GRUB Manual: info grub2 and info grub2-install
+Chapter 28: "Invoking grub2-install"

@@ -1,0 +1,519 @@
+
+
+Packet Monitoring Tools
+Use tcpdump to do narrow search based on several parameters.
+[root@server1 ~]# tcpdump -i eth0 -n src host instructor.example.com and src port 53
+  ... output omitted ...
+This reports all packets from instructor.example.com originating from port 53.
+Use nc to set up a client/server chat:
+On one host, start nc with the -l (listen) option and a port number.
+[student@server1 ~]$ nc -l 5150
+On another system, start a client process to connect to the port on which the server is listening.
+[student@desktop1 ~]$ nc server1 5150
+Anything typed on the keyboard is sent across the connection between the server and client.
+You can also use tshark, provided by the wireshark package, to capture traffic to a file.
+[root@desktop1 ~]# tshark -f "tcp port 5150" -i br0 -w /tmp/capture.cap
+To interpret or explore the captured content in a graphical tool, run wireshark.
+[root@desktop1 ~]# wireshark /tmp/capture.cap
+Use nc in conjunction with tcpdump or tshark, to troubleshoot connections between machines.
+For more info, see tcpdump(8), nc(1), tshark(1), and wireshark(1) man pages.
+
+
+Monitoring and Diagnosing Network Performance
+A packet sent to a Red Hat Enterprise Linux system is received by the network interface card (NIC) and placed in either an internal hardware buffer or a ring buffer.
+The NIC sends a hardware interrupt request, prompting creation of a software interrupt operation to handle the interrupt request.
+The packet is transferred from the buffer to the network stack.
+Depending on the packet and network configuration, the packet is forwarded, discarded, or passed to a socket receive queue for an application.
+The packet is removed from the network stack.
+
+There are a number of points during network packet processing that can become bottlenecks and reduce performance:
+The NIC hardware buffer or ring buffer
+The hardware buffer might be a bottleneck if a large number of packets are being dropped.
+The hardware or software interrupt queues
+Interrupts can increase latency and processor contention.
+The socket receive queue for the application
+A bottleneck in an application’s receive queue is indicated by a large number of packets that are not copied to the requesting application, or by an increase in UDP input errors (InErrors) in /proc/net/snmp.
+
+Diagnostic Tools
+ss is a command-line utility that prints statistical information about sockets.
+Allows administrators to assess device performance over time.
+By default, ss lists open non-listening TCP sockets that have established connections.
+Options are provided to filter statistics about specific sockets.
+Red Hat recommends ss over netstat in Red Hat Enterprise Linux 7.
+ss is provided by the iproute package.
+ip is a utility that lets administrators manage and monitor routes, devices, routing policies, and tunnels.
+ip monitor can continuously monitor the state of devices, addresses, and routes.
+ip is provided by the iproute package.
+dropwatch is an interactive tool that monitors and records packets that are dropped by the kernel.
+ethtool is a utility that allows administrators to view and edit network interface card settings.
+Useful for observing statistics of certain devices, such as number of packets dropped by that device.
+View the status of a specified device’s counters with ethtool -S and the name of the device you want to monitor.
+[root@server1 ~]# ethtool -S devname
+/proc/net/snmp displays data used by snmp agents for IP, ICMP, TCP and UDP monitoring and management.
+Examine this file on a regular basis to identify unusual values and potential performance problems.
+An increase in UDP input errors (InErrors) in /proc/net/snmp can indicate a bottleneck in a socket receive queue.
+
+
+Example SystemTap Scripts
+nettop.stp prints a list of processes (process identifier and command) every 5 seconds. The list includes the number of packets sent/received and the amount of data sent/received by the process during that interval.
+socket-trace.stp instruments each function in the Linux kernel’s net/socket.c file and prints trace data.
+tcp_connections.stp prints information for each new incoming TCP connection accepted by the system, including:
+UID
+Command accepting the connection
+Process identifier of the command
+Port the connection is on
+IP address of the request’s originator
+dropwatch.stp prints, at 5 second intervals, the number of socket buffers freed at locations in the kernel.
+The Red Hat Enterprise Linux 7 SystemTap Beginner’s Guide is available from http://access.redhat.com/site/documentation/Red_Hat_Enterprise_Linux/
+
+
+
+
+Tuned-adm Profiles for Network Performance
+tuned-adm is a command line tool that provides profiles to improve performance in a number of specific use cases. The following profiles can be useful for improving networking performance:
+latency-performance
+network-latency
+network-throughput
+tuned-adm recommend is a sub-command that assesses your system and outputs a recommended tuning profile.
+Also sets the default profile for your system at install time.
+Can be used to return to the default profile.
+As of Red Hat Enterprise Linux 7, tuned-adm can run any command as part of enabling or disabling a tuning profile.
+Use to add environment-specific checks that are not available in tuned-adm, such as checking whether the system is the master database node before selecting which tuning profile to apply.
+include parameter in profile definition files allows you to base your own tuned-adm profiles on existing profiles.
+
+
+Tuning Profiles Provided With tuned-adm and Supported in Red Hat Enterprise Linux 7
+throughput-performance - A server profile focused on improving throughput.
+Default profile recommended for most systems.
+Favors performance over power savings by setting intel_pstate and max_perf_pct=100.
+Enables transparent huge pages.
+Uses cpupower to set the performance cpufreq governor.
+Sets the input/output scheduler to deadline.
+Sets kernel.sched_min_granularity_ns to 10 µs, kernel.sched_wakeup_granularity_ns to 15 µs, and vm.dirty_ratio to 40%.
+latency-performance - A server profile focused on lowering latency.
+Recommended for latency-sensitive workloads that benefit from c-state tuning and increased TLB efficiency of transparent huge pages.
+Favors performance over power savings by setting intel_pstate and max_perf_pct=100.
+Enables transparent huge pages.
+Uses cpupower to set the performance cpufreq governor.
+Requests a cpu_dma_latency value of 1.
+
+Tuning Profiles Provided With tuned-adm and Supported in Red Hat Enterprise Linux 7
+network-latency - A server profile focused on lowering network latency.
+Favors performance over power savings by setting intel_pstate and max_perf_pct=100.
+Disables transparent huge pages and automatic NUMA balancing.
+Uses cpupower to set the performance cpufreq governor.
+Requests a cpu_dma_latency value of 1.
+Sets busy_read and busy_poll times to 50 µs, and tcp_fastopen to 3.
+network-throughput - A server profile focused on improving network throughput.
+Favors performance over power savings by setting intel_pstate and max_perf_pct=100 and increasing kernel network buffer sizes.
+Enables transparent huge pages.
+Uses cpupower to set the performance cpufreq governor.
+Sets kernel.sched_min_granularity_ns to 10 µs, kernel.sched_wakeup_granularity_ns to 15 µs, and vm.dirty_ratio to 40%
+
+
+
+Tuning Profiles Provided With tuned-adm and Supported in Red Hat Enterprise Linux 7
+virtual-guest - A profile focused on optimizing performance in Red Hat Enterprise Linux 7 virtual machines.
+Favors performance over power savings by setting intel_pstate and max_perf_pct=100
+Decreases swappiness of virtual memory
+Enables transparent huge pages
+Uses cpupower to set the performance cpufreq governor
+Sets kernel.sched_min_granularity_ns to 10 µs, kernel.sched_wakeup_granularity_ns to 15 µs, and vm.dirty_ratio to 40%
+virtual-host - A profile focused on optimizing performance in Red Hat Enterprise Linux 7 virtualization hosts.
+Favors performance over power savings by setting intel_pstate and max_perf_pct=100
+Decreases swappiness of virtual memory
+Enables transparent huge pages
+Writes dirty pages back to disk more frequently
+Uses cpupower to set the performance cpufreq governor
+Sets kernel.sched_min_granularity_ns to 10 µs, kernel.sched_wakeup_granularity_ns to 15 µs, kernel.sched_migration_cost to 5 µs, and vm.dirty_ratio to 40%.
+For detailed information about the power saving profiles provided with tuned-adm, see the Red Hat Enterprise Linux 7 Power Management Guide, available from http://access.redhat.com/site/documentation/Red_Hat_Enterprise_Linux/
+For detailed information about using tuned-adm, see the man tuned-adm man page.
+
+Configuring the Hardware Buffer
+Slow the input traffic
+Filter incoming traffic
+Decrease the rate at which the queue fills
+Reduce the number of joined multicast groups
+Reduce the amount of broadcast traffic
+Resize the hardware buffer queue
+Increase queue size, so it does not easily overflow
+Reduce the number of packets being dropped
+Modify the rx/tx parameters of the network device with ethtool:
+[root@server1 ~]# ethtool --set-ring devname value
+Change the drain rate of the queue
+Device weight or dev_weight is the number of packets a device can receive in a single scheduled processor access
+Increase the rate at which a queue drains by increasing its dev_weight
+Temporarily alter dev_weight by changing the contents of /proc/sys/net/core/dev_weight
+Permanently alter dev_weight with sysctl; provided by procps-ng
+Copyright ©2015 Red Hat, Inc.
+
+
+Configuring Busy Polling
+To enable busy polling on specific sockets:
+Set sysctl.net.core.busy_poll to a value other than 0.
+Number of microseconds to wait for packets on the device queue for socket poll and selects
+Red Hat recommends a value of 50
+Add the SO_BUSY_POLL socket option.
+To enable busy polling globally:
+Set sysctl.net.core.busy_read to a value other than 0.
+Number of microseconds to wait for packets on the device queue for socket reads
+Sets default value of SO_BUSY_POLL.
+Red Hat recommends a value of 50 for a small number of sockets, 100 for large numbers of sockets
+For more than several hundred sockets, use epoll instead.
+Busy polling behavior is supported by the following drivers, which are also supported on Red Hat Enterprise Linux 7:
+bnx2x
+be2net
+ixgbe
+mlx4
+myri10ge
+
+
+Configuring Socket Receive Queues
+Decrease speed of incoming traffic
+Decrease rate at which queue fills
+Filter or drop packets before they reach the queue
+Lower weight of device
+Increase depth of the application’s socket queue
+Match size of traffic bursts to prevent packets from being dropped
+Decrease speed of incoming traffic
+Filter incoming traffic
+Lower the network interface card’s device weigh
+
+Increasing Queue Depth
+To increase the depth of a queue, increase the size of the socket receive buffer by making either of the following changes:
+Increase the value of /proc/sys/net/core/rmem_default
+Controls default size of receive buffer used by sockets
+Value must be smaller than value of /proc/sys/net/core/rmem_max
+Use setsockopt to configure a larger SO_RCVBUF value
+Controls maximum bytes of a socket’s receive buffer
+Use getsockopt system call to determine current buffer value
+
+Configuring Receive-Side Scaling (RSS)
+Receive-Side Scaling (RSS), also known as multi-queue receive
+Distributes network receive processing across several hardware-based receive queues
+Allows inbound network traffic to be processed by multiple CPUs
+Relieves bottlenecks in receive interrupt processing caused by overloading a single CPU
+Reduces network latency
+
+
+Configuring Receive-Side Scaling (RSS)
+To determine whether your NIC supports RSS:
+Check whether multiple interrupt request queues are associated with the interface in /proc/interrupts.
+Example: p1p1 interface
+[root@server1 ~]# egrep 'CPU|p1p1' /proc/interrupts
+   CPU0    CPU1    CPU2    CPU3    CPU4    CPU5
+89:   40187       0       0       0       0       0   IR-PCI-MSI-edge   p1p1-0
+90:       0     790       0       0       0       0   IR-PCI-MSI-edge   p1p1-1
+91:       0       0     959       0       0       0   IR-PCI-MSI-edge   p1p1-2
+92:       0       0       0    3310       0       0   IR-PCI-MSI-edge   p1p1-3
+93:       0       0       0       0     622       0   IR-PCI-MSI-edge   p1p1-4
+94:       0       0       0       0       0    2475   IR-PCI-MSI-edge   p1p1-5
+Check the output of ls -1 /sys/devices/*/*/device_pci_address/msi_irqs after the network driver is loaded.
+Example: Device with PCI address of 0000:01:00.0
+[root@server1 ~]# ls -1 /sys/devices/*/*/0000:01:00.0/msi_irqs
+101
+102
+103
+104
+105
+106
+107
+108
+109
+
+
+Configuring Receive-Side Scaling (RSS)
+RSS is enabled by default
+Configure number of queues for RSS in appropriate network device driver
+For bnx2x driver, configure in num_queues
+For sfc driver, configure in rss_cpus
+Typically configured in /sys/class/net/device/queues/rx-queue/
+device = name of network device (such as eth1)
+rx-queue = name of appropriate receive queue
+Limit number of queues to one per physical CPU core
+RSS distributes network processing equally between available CPUs
+Based on amount of processing each CPU has queued
+To modify and weight activity distribution based on importance, use ethtool --show-rxfh-indir and --set-rxfh-indir
+Use irqbalance in conjunction with RSS to reduce likelihood of cross-node memory transfers and cache line bouncing
+Lowers latency of processing network packets
+
+
+Configuring Receive Packet Steering (RPS)
+Advantages of RPS over hardware-based RSS:
+Use RPS with any NIC
+Easy to add software filters to RPS to deal with new protocols
+RPS does not increase hardware interrupt rate of the network device
+Does introduce inter-processor interrupts
+RPS is configured per network device and receive queue
+Configure in /sys/class/net/device/queues/rx-queue/rps_cpus
+device = name of network device (such as eth0)
+rx-queue = name of appropriate receive queue (such as rx-0)
+Default value of the rps_cpus file is 0
+Disables RPS
+CPU that handles network interrupt also processes packet
+Enable RPS by configuring appropriate rps_cpus with CPUs that should process packets from the specified network device and receive queue
+rps_cpus files use comma-delimited CPU bitmaps
+To allow a CPU to handle interrupts for the receive queue on an interface, set the value of their positions in the bitmap to 1
+Copyright ©2015 Red Hat, Inc.
+
+For network devices with single transmit queues, configure RPS to use CPUs in the same memory domain
+On non-NUMA systems, this means all available CPUs can be used
+If network interrupt rate is extremely high, exclude the CPU that handles network interrupts to improve performance
+For network devices with multiple queues, there is typically no benefit to configure both RPS and RSS
+RSS is configured to map a CPU to each receive queue by default
+RPS may still be beneficial if there are fewer hardware queues than CPUs
+RPS is configured to use CPUs in same memory domain
+
+
+Configuring Receive Flow Steering (RFS)
+RFS is disabled by default. To enable RFS, you must edit two files:
+/proc/sys/net/core/rps_sock_flow_entries
+Set the value to the maximum expected number of concurrently active connections.
+Red Hat recommends a value of 32768 for moderate server loads.
+All values are rounded up to the nearest power of 2.
+/sys/class/net/device/queues/rx-queue/rps_flow_cnt
+device = name of the network device you wish to configure (for example, eth0).
+rx-queue = receive queue you wish to configure (for example, rx-0).
+Set the value to rps_sock_flow_entries divided by N.
+N = number of receive queues on a device.
+For single-queue devices, the value of rps_flow_cnt is the same as the value of rps_sock_flow_entries.
+If data received from a single sender is greater than a single CPU can handle, do one of the following:
+Configure a larger frame size
+Consider NIC offload options
+Consider faster CPUs
+Consider using numactl or taskset in conjunction with RFS to pin applications to specific cores, sockets, or NUMA nodes. This can help prevent packets from being processed out of order.
+
+Configuring Receive Flow Steering (RFS)
+RFS is disabled by default. To enable RFS, you must edit two files:
+/proc/sys/net/core/rps_sock_flow_entries
+Set the value to the maximum expected number of concurrently active connections.
+Red Hat recommends a value of 32768 for moderate server loads.
+All values are rounded up to the nearest power of 2.
+/sys/class/net/device/queues/rx-queue/rps_flow_cnt
+device = name of the network device you wish to configure (for example, eth0).
+rx-queue = receive queue you wish to configure (for example, rx-0).
+Set the value to rps_sock_flow_entries divided by N.
+N = number of receive queues on a device.
+For single-queue devices, the value of rps_flow_cnt is the same as the value of rps_sock_flow_entries.
+If data received from a single sender is greater than a single CPU can handle, do one of the following:
+Configure a larger frame size
+Consider NIC offload options
+Consider faster CPUs
+Consider using numactl or taskset in conjunction with RFS to pin applications to specific cores, sockets, or NUMA nodes. This can help prevent packets from being processed out of order.
+
+
+Configuring Accelerated RFS
+Accelerated RFS is only available if the following conditions are met:
+The NIC must support accelerated RFS by exporting the ndo_rx_flow_steer() netdevice function.
+ntuple filtering must be enabled.
+Once these conditions are met, CPU to queue mapping is deduced automatically based on IRQ affinities configured by the driver for each receive queue (traditional RFS configuration).
+Red Hat recommends using accelerated RFS wherever using RFS is appropriate and the NIC supports it. NOTE: Refer to
+https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Performance_Tuning_Guide/sect-Red_Hat_Enterprise_Linux-Performance_Tuning_Guide-Networking-Configuration_tools.html#sect-Red_Hat_Enterprise_Linux-Performance_Tuning_Guide-Configuration_tools-Configuring_Receive_Flow_Steering_RFS, Configuring Receive Flow Steering (RFS) for details on configuring traditional RFS.
+Copyright ©2015 Red Hat, Inc.
+
+MTU = Maximum Transmission Unit.
+Default MTU is 1500.
+Jumbo frames = Frames larger than 1500.
+Set an MTU as close to 9000 as possible.
+Allows for the best throughput on gigabit or better networks.
+Not all interfaces support MTU’s over 1500.
+Some interfaces support MTU’s over 1500, but not up to 9000.
+All network gear in between, and both hosts, must support and be configured to the same MTU size.
+Network gear includes switches (VLANS), routers, and firewalls.
+If you change MTU values for a host, do it from the console, in case network connectivity to the host is interrupted
+
+
+Use ip to find the maximum supported MTU size for a network interface:
+[root@server1 ~]# ip link set eth0 mtu 9000
+If the ip command fails, the MTU value is not supported.
+To find the common supported value, try MTU values on all hosts that communicate with each other.
+Use jumbo frames on LANs only; most WAN network gear cannot support it.
+Using jumbo frames over tunneled connections is not recommended.
+To configure a persistent MTU setting on an interface, add MTU=value to the ifcfg-interface file in /etc/sysconfig/network-scripts.
+value = the MTU value
+interface = the interface you are configuring
+
+
+Encryption Overhead and PMTU Issues
+Encrypted tunnels between network segments (VPN, GRE, IPSec), may cause fragmented packets.
+If a TCP session starts normally over a tunneled link but goes down shortly after, this may be a symptom of fragmentation due to tunnel overhead.
+This is typical with SCP sessions.
+Path MTU Discovery (PMTU) can automatically find the correct MTU to use over network segments. ** Dynamic PMTU discovery requires ICMP packet type 3 code 4.
+Many network and system administrators block all ICMP packets.
+Possible solutions to PMTU issues:
+Enable ICMP type 3 code 4 between the two hosts and all network gear in between.
+Manually discover the necessary MTU value and set it on both hosts’ network interfaces:
+Disallow fragments (-M do) with ping and start with a packet size of 1472 (-s 1472).
+[root@server1 ~]# ping 192.168.1.6 -M do -s 1472 -c 1
+PING 192.168.1.6 (192.168.1.6) 1472(1500) bytes of data.
+From 192.168.1.203 icmp_seq=1 Frag needed and DF set (mtu = 1500)
+Subtract one from the packet size until it works (-c 1 sends one packet):
+[root@server1 ~]# ping 192.168.1.6 -M do -s 1471 -c 1
+PING 192.168.1.6 (192.168.1.6) 1471(1499) bytes of data.
+1479 bytes from 192.168.1.6: icmp_seq=1 ttl=64 time=0.913 ms
+To determine a valid MTU size, add 28 to the packet size in the ping command that works.
+
+
+Encryption Overhead and PMTU Issues
+Encrypted tunnels between network segments (VPN, GRE, IPSec), may cause fragmented packets.
+If a TCP session starts normally over a tunneled link but goes down shortly after, this may be a symptom of fragmentation due to tunnel overhead.
+This is typical with SCP sessions.
+Path MTU Discovery (PMTU) can automatically find the correct MTU to use over network segments. ** Dynamic PMTU discovery requires ICMP packet type 3 code 4.
+Many network and system administrators block all ICMP packets.
+Possible solutions to PMTU issues:
+Enable ICMP type 3 code 4 between the two hosts and all network gear in between.
+Manually discover the necessary MTU value and set it on both hosts’ network interfaces:
+Disallow fragments (-M do) with ping and start with a packet size of 1472 (-s 1472).
+[root@server1 ~]# ping 192.168.1.6 -M do -s 1472 -c 1
+PING 192.168.1.6 (192.168.1.6) 1472(1500) bytes of data.
+From 192.168.1.203 icmp_seq=1 Frag needed and DF set (mtu = 1500)
+Subtract one from the packet size until it works (-c 1 sends one packet):
+[root@server1 ~]# ping 192.168.1.6 -M do -s 1471 -c 1
+PING 192.168.1.6 (192.168.1.6) 1471(1499) bytes of data.
+1479 bytes from 192.168.1.6: icmp_seq=1 ttl=64 time=0.913 ms
+To determine a valid MTU size, add 28 to the packet size in the ping command that works.
+
+iSCSI initiator: a client that needs access to raw SAN storage.
+iSCSI target: a remote hard disk presented from an iSCSI server or "target portal".
+iSCSI target portal: a server that provides targets over the network to an initiator
+IQN (iSCSI Qualified Name): Each initiator and target needs a unique name to identify it
+Use a name that is likely to be unique on the Internet.
+Name format: iqn.yyyy-mm.{reverse domain}:label.
+Network communication by default is cleartext to port 3260/tcp on the iSCSI target.
+If you allow two initiators to log in to the same iSCSI target (remote hard disk) at the same time, it is important not to allow both initiators to mount the same file system from the same target at the same time. Unless a cluster file system such as GFS2 is in use, you risk file system corruption.
+
+iSCSI Initiator Review
+Red Hat Enterprise Linux typically uses a software-based iSCSI initiator.
+Software-based iSCSI initiators must connect to an existing Ethernet network with bandwidth that supports expected storage traffic.
+Hardware-based iSCSI initiators include the required protocols in a dedicated host bus adapter (HBA).
+iSCSI HBAs and TCP offload engines (TOE), which include the TCP network stack on an Ethernet NIC, move processing overhead and Ethernet interrupts to hardware.
+Configuring an iSCSI client initiator requires installing iscsi-initiator-utils
+Includes iscsi and iscsid services.
+Includes /etc/iscsi/iscsid.conf and /etc/iscsi/initiatorname.iscsi configuration files.
+As an iSCSI node, the client requires a unique IQN.
+/etc/iscsi/initiatorname.iscsi contains a generated IQN using Red Hat’s domain.
+Administrators typically reset the IQN to their own domain and client system string.
+/etc/iscsi/iscsid.conf contains default settings for node records created during new target discovery.
+Settings include iSCSI timeouts, retry parameters, and authentication usernames and passwords.
+Changing this file requires restarting iscsi.
+[root@desktop1 ~]# systemctl restart iscsi
+
+iSCSI Initiator Review
+To discover targets, install iscsi-initiator-utils, and then enable and start iscsi.
+Targets must be discovered before device connection and use.
+Discovery process stores target node information and settings in /var/lib/iscsi/nodes and uses defaults from /etc/iscsi/iscsid.conf.
+Node records are stored for each portal.
+Perform discovery with this command:
+[root@desktop1 ~]# iscsiadm -m discovery -t sendtargets -p target_server[:port]
+
+192.168.0.101:3260,1 iqn.2014-06.com.example:server1
+In discovery mode, sendtargets returns only targets with access configured for this initiator.
+Omit port number if target server is configured on default port 3260.
+Upon discovery, a node record is written to /var/lib/iscsi/nodes and used for subsequent logins.
+
+To use the listed target, log in using this command:
+[root@desktop1 ~]# iscsiadm -m node -T iqn.2014-06.com.example:server1 [-p target_server[:port]] -l
+Specifying the portal is optional.
+A login without specifying a portal connects to every portal node that accepts this target name.
+Once discovered, obtain information about targets with iscsiadm
+Set the command detail level with -P N, where N is the verbosity setting. 0 specifies the least verbose output.
+Show information about discovered targets: iscsiadm -m discovery [-P 0|1]
+Show information about known targets: iscsiadm -m node [-P 0|1]
+Show information about active sessions: iscsiadm -m session [-P 0|1|2|3]
+To discontinue using a target temporarily, log out.
+Node records remain after logout and are used to automatically log into targets upon system reboot or iscsi restart.
+Log out of a target using this command:
+[root@desktop1 ~]# iscsiadm -m node -T iqn.2012-04.com.example:example [-p target_server[:port]] -u
+If a portal is not specified, the target logs out of all relevant portals
+
+
+To permanently log out of a target, delete the node records.
+After deletion, manual or automatic login cannot reoccur without performing another discovery.
+Not specifying a portal removes target node records for all relevant portals.
+Delete the node record permanently by using this command:
+[root@desktop1 ~]# iscsiadm -m node -T iqn.2012-04.com.example:example [-p target_server[:port]] -o delete
+To list iSCSI targets:
+[root@desktop1 ~]# dmesg|tail
+...OMITTED...
+[ 5153.388625]  sda: unknown partition table
+[ 5153.403314] sd 8:0:0:0: [sda] Attached SCSI disk
+[root@desktop1 ~]# lsblk
+NAME                       MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+fd0                          2:0    1    4K  0 disk
+sda                          8:0    0  100M  0 disk
+...OMITTED...
+[root@desktop1 ~]# tail /var/log/messages
+...OMITTED...
+Dec  3 13:55:31 desktop1 kernel: sda: unknown partition table
+Dec  3 13:55:31 desktop1 kernel: sd 2:0:0:0: [sda] Attached SCSI disk
+Dec  3 13:55:31 desktop1 iscsid: Connection1:0 to [target: iqn.2014-06.com.example:server1, portal: 192.168.0.101,3260
+
+List the targets recognized by the iscsi service.
+[root@desktop1 ~]# iscsiadm -m session -P 3
+iSCSI Transport Class version 2.0-870
+version 6.2.0.873-21
+Target: iqn.2010-09.com.example:rdisks.desktop1 (non-flash)
+        Current Portal: 192.168.0.254:3260,1
+        Persistent Portal: 192.168.0.254:3260,1
+                **********
+                Interface:
+                **********
+                Iface Name: default
+                Iface Transport: tcp
+                Iface Initiatorname: iqn.1994-05.com.redhat:ffb991f28cb
+                Iface IPaddress: 192.168.0.1
+                Iface HWaddress: <empty>
+                Iface Netdev: %lt;empty>
+                SID: 7
+                iSCSI Connection State: LOGGED IN
+                iSCSI Session State: LOGGED_IN
+                Internal iscsid Session State: NO CHANGE
+                *********
+                Timeouts:
+                *********
+                Recovery Timeout: 120
+                Target Reset Timeout: 30
+                LUN Reset Timeout: 30
+                Abort Timeout: 15
+                *****
+                CHAP:
+                *****
+                username: <empty>
+                password: ********
+                username_in: <empty>
+                password_in: ********
+                ************************
+                Negotiated iSCSI params:
+                ************************
+                HeaderDigest: None
+                DataDigest: None
+                MaxRecvDataSegmentLength: 262144
+                MaxXmitDataSegmentLength: 262144
+                FirstBurstLength: 65536
+                MaxBurstLength: 262144
+                ImmediateData: Yes
+                InitialR2T: Yes
+                MaxOutstandingR2T: 1
+                ************************
+                Attached SCSI devices:
+                ************************
+                Host Number: 8  State: running
+                scsi8 Channel 00 Id 0 Lun: 0
+                        Attached scsi disk sda          State: running
+						
+						
+						Change directory to the location of the iSCSI node records for the remainder of this exercise. Locate the persistent node record for the new iSCSI target.
+[root@desktop1 ~]# cd /var/lib/iscsi/nodes
+[root@desktop1 nodes]$ ls -lR
+View the connection parameters defaults in an iSCSI node record.
+[root@desktop1 nodes]# less iqn.2010-09.com.example\:rdisks.desktop1/192.168.0.254\,3260\,1/default
+When persistently mounting a file system on an iSCSI target in /etc/fstab:
+Use blkid to determine the file system UUID and mount using UUID, not /dev/sd* device name.
+Use _netdev as a mount option in /etc/fstab.
+Ensure the iscsi and iscsid services will start at boot time.
+For more info, see:
+Red Hat Enterprise Linux 7 Storage Administration Guide, Chapter 26: Online Storage Management
+/usr/share/doc/iscsi-initiator-utils-*/README
+Knowledgebase: "Can I put a swap device or file on iSCSI storage?" https://access.redhat.com/kb/docs/DOC-4135
+iscsiadm(8), iscsid(8) man pages
+Open-iSCSI

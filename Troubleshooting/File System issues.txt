@@ -1,0 +1,144 @@
+Unauthorized Changes
+find
+Search your file system for files with any particular attribute or property.
+Use multiple options to find exactly what you want, without finding false positives.
+Search file system timestamps (modification, change, or access) and resolve them by number of days or minutes with -mtime, -mmin, -ctime, -cmin, -atime, or -amin.
+Example: Search /etc for changes within the last 60 minutes
+[root@server1 ~]# find /etc -cmin -60
+Search the ownership, or lack thereof, with -user, -group, -nouser, or -nogroup.
+Example: Find files in system directories that are not owned by a valid user
+[root@server1 ~]# find {,/usr{,/local}}/{,s}bin -nouser
+The above command is an example of bash shell string generation, called brace expansion.
+Search the permissions on files with -perm.
+Example: Find files owned by root and with the suid permission
+[root@server1 ~]# find / -perm /4000 -user root -ls 2>/dev/null
+Search for files that were not installed through the package management system by combining find with rpm and grep.
+[root@SRV ~]# find /usr/bin | xargs rpm -q --whatprovides | grep "not owned"
+
+Compromised systems may replace commands, like find, to hide the compromise. To more confidently search for the compromise, you can boot in rescue mode, modify the PATH to not use executables from the mounted hard drive, and then run the above utiliti
+
+aide
+Records the state (file attributes, properties, and checksums) of a system and then compares to that state.
+Be sure to collect the state of the system prior to the compromise.
+Make your comparisons using an offline copy
+
+
+chattr
+To write to a file, many things must agree, such as permissions, ACLs, mount options, and file attributes, specifically the immutable attribute.
+[root@server1 ~]# echo stuff > testfile
+[root@server1 ~]# ls -l testfile
+-rw-r--r--. 1 root root 6 Aug 29 11:12 testfile
+[root@server1 ~]# lsattr testfile
+-------------e- testfile
+[root@server1 ~]# chattr +i testfile
+[root@server1 ~]# lsattr testfile
+----i--------e- testfile
+[root@server1 ~]# echo stuff >> testfile
+-bash: testfile: Permission denied
+[root@server1 ~]# chattr -i testfile
+[root@server1 ~]# lsattr testfile
+-------------e- testfile
+[root@server1 ~]# echo stuff >> testfile
+Use the immutable attribute to prevent root from writing to a file.
+root can always remove the attribute as needed.
+Use a combination of lsattr and grep to locate all files with the immutable attribute:
+[root@server1 ~]# lsattr -R / 2> /dev/null | grep '^[^/]...i'
+----i--------e- /root/testfile
+
+
+Protect Packages With yum
+You can configure yum to refuse to remove certain packages.
+By default, only the yum package and packages that depend on yum are protected.
+To protect additional packages, add a new *.conf file in /etc/yum/protected.d/ and list the packages you want to protect (one package name per line).
+For more info, see find(1), aide(1), aide.conf(5), yum-verify(1), and chattr(1) man pages.
+
+
+What Is Currently Installed?
+For an alphabetical listing of installed packages:
+[root@server1 ~]# yum list installed
+Loaded plugins: refresh-packagekit, rhnplugin, verify
+Installed Packages
+ConsoleKit.x86_64                  0.4.1-3.el6             @anaconda-RedHatEnterpriseLinux-201009221801.x86_64/6.0
+ConsoleKit-libs.x86_64             0.4.1-3.el6             @anaconda-RedHatEnterpriseLinux-201009221801.x86_64/6.0
+ConsoleKit-x11.x86_64              0.4.1-3.el6             @anaconda-RedHatEnterpriseLinux-201009221801.x86_64/6.0
+DeviceKit-power.x86_64             014-1.el6               @anaconda-RedHatEnterpriseLinux-201009221801.x86_64/6.0
+GConf2.x86_64                      2.28.0-6.el6            @anaconda-RedHatEnterpriseLinux-201009221801.x86_64/6.0
+GConf2-gtk.x86_64                  2.28.0-6.el6            @anaconda-RedHatEnterpriseLinux-201009221801.x86_64/6.0
+ImageMagick.x86_64                 6.5.4.7-5.el6           @rhel-x86_64-server-6
+ImageMagick-perl.x86_64            6.5.4.7-5.el6           @rhel-x86_64-server-optional-6
+
+
+For a chronological listing of packages installed via yum:
+[root@server1 ~]# cat /var/log/yum.log
+... output omitted ...
+Aug 19 12:08:29 Installed: aide-0.14-3.el6.x86_64
+Aug 19 12:09:46 Installed: yum-plugin-verify-1.1.30-6.el6.noarch
+Aug 19 15:27:54 Updated: glibc-common-2.12-1.25.el6_1.3.x86_64
+Aug 19 15:28:08 Updated: glibc-2.12-1.25.el6_1.3.x86_64
+Aug 19 15:28:09 Updated: libcurl-7.19.7-26.el6_1.2.x86_64
+Aug 19 15:28:11 Updated: curl-7.19.7-26.el6_1.2.x86_64
+Aug 19 15:28:12 Updated: nscd-2.12-1.25.el6_1.3.x86_64
+Aug 22 15:34:09 Installed: kernel-doc-2.6.32-131.6.1.el6.noarch
+Aug 22 16:39:50 Updated: selinux-policy-3.7.19-93.el6_1.7.noarch
+Aug 22 16:40:19 Updated: selinux-policy-targeted-3.7.19-93.el6_1.7.noa
+
+For a reverse chronological listing of packages from the rpm database:
+[root@server1 ~]# rpm -qa --last
+selinux-policy-targeted-3.7.19-93.el6_1.7     Mon 22 Aug 2011 04:39:51 PM EDT
+selinux-policy-3.7.19-93.el6_1.7              Mon 22 Aug 2011 04:39:45 PM EDT
+kernel-doc-2.6.32-131.6.1.el6                 Mon 22 Aug 2011 03:34:07 PM EDT
+nscd-2.12-1.25.el6_1.3                        Fri 19 Aug 2011 03:28:11 PM EDT
+curl-7.19.7-26.el6_1.2                        Fri 19 Aug 2011 03:28:10 PM EDT
+libcurl-7.19.7-26.el6_1.2                     Fri 19 Aug 2011 03:28:08 PM EDT
+glibc-2.12-1.25.el6_1.3                       Fri 19 Aug 2011 03:27:59 PM EDT
+glibc-common-2.12-1.25.el6_1.3                Fri 19 Aug 2011 03:27:46 PM EDT
+yum-plugin-verify-1.1.30-6.el6                Fri 19 Aug 2011 12:09:46 PM EDT
+aide-0.14-3.el6                               Fri 19 Aug 2011 12:08:27 PM EDT
+... output omitted ..
+
+
+Repair a Corrupt rpm Database
+Remove stale lock files.
+[root@server1 ~]# lsof | grep /var/lib/rpm
+[root@server1 ~]# rm /var/lib/rpm/__db*
+rm: remove regular file `/var/lib/rpm/__db.001'? y
+rm: remove regular file `/var/lib/rpm/__db.002'? y
+rm: remove regular file `/var/lib/rpm/__db.003'? y
+rm: remove regular file `/var/lib/rpm/__db.004'? y
+Make a backup.
+[root@server1 ~]# tar cjvf rpmdb-$(date +%Y%m%d-%H%M).tar.bz2 /var/lib/rpm
+tar: Removing leading `/' from member names
+/var/lib/rpm/
+/var/lib/rpm/Dirnames
+/var/lib/rpm/Filedigests
+/var/lib/rpm/Conflictname
+/var/lib/rpm/Name
+/var/lib/rpm/Providename
+/var/lib/rpm/Provideversion
+/var/lib/rpm/Installtid
+/var/lib/rpm/Sha1header
+/var/lib/rpm/Group
+/var/lib/rpm/Obsoletename
+/var/lib/rpm/Pubkeys
+/var/lib/rpm/Packages
+/var/lib/rpm/Basenames
+/var/lib/rpm/Requirename
+/var/lib/rpm/.rpm.lock
+/var/lib/rpm/Sigmd5
+/var/lib/rpm/Requireversion
+/var/lib/rpm/Triggername
+
+Verify integrity.
+[root@server1 ~]# cd /var/lib/rpm
+[root@server1 rpm]# /usr/lib/rpm/rpmdb_verify Packages
+If necessary, make a dump of the corrupt database.
+[root@server1 rpm]# mv Packages Packages.bad
+[root@server1 rpm]# /usr/lib/rpm/rpmdb_dump Packages.bad | /usr/lib/rpm/rpmdb_load Packages
+[root@server1 rpm]# /usr/lib/rpm/rpmdb_verify Packages
+Rebuild using the dump.
+[root@server1 rpm]# rpm -v --rebuilddb
+For more info, see:
+Red Hat Enterprise Linux 7 Administrator’s Guide:
+Chapter 5: Yum
+Appendix A: RPM
+yum(8) and rpm(8) man page

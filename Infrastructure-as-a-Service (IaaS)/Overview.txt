@@ -1,0 +1,194 @@
+Why Evolve?
+Existing infrastructure is not designed to cope with growing demand
+There is too much data
+Businesses produce vast amounts of unstructured data
+Scaling up no longer works
+Scaling out is a necessity
+Too many service requests
+More client devices are coming online—laptops, tablets, phones, watches…
+Bring-Your-Own-Device (BYOD) generation is here
+Applications and infrastructure were not designed for this level of demand
+Traditional capabilities are being exhausted
+
+OpensStack
+
+Modular architecture
+Designed to scale out easily
+Based on continually growing set of core services
+
+Meets the Demands of Scale-Out Digital Business
+Brings public cloud-like capabilities into your datacenter
+Provides massive on-demand scale-out capacity
+1,000s ? 10,000s ? 100,000s of VMs
+Removes vendor lock-in
+Open source provides high degree of flexibility to customize and interoperate
+Community development = higher “feature velocity”
+Features and functions you need, faster to market than proprietary software
+Greater automation, resource provisioning, and scaling
+
+Am I Ready for OpenStack?
+Traditional: Scale Up (RHEV)
+Cloud: Scale Out (OpenStack)
+Mixed/Hybrid
+Large stateful VM
+Small stateless VMs
+Combination of traditional scale-up and cloud scale-out workloads
+Example: Database may be hosted on traditional workloads, and web front-end and logic layers on cloud workloads
+1 application ? 1 VM
+1 application ? Many VMs
+Life cycle in years
+Life cycle hours to months
+Increased user demand = Scale up (VM gets bigger)
+Increased user demand = Scale out (add VMs)
+Not designed to tolerate VM; need features that keep VMs up
+If VM dies, application kills it and creates new one; app stays up
+Application SLA requires enterprise virtualization features (migration, HA, etc.) to keep applications available
+
+
+Needs to access hardware resources
+Needs an operating environment, hypervisor, services
+Leverages existing code libraries for functionality
+
+
+Depends on the underlying Red Hat Enterprise Linux
+Optimized and co-engineered with Red Hat Enterprise Linux
+
+A typical OpenStack cloud is made up of at least 9 core services plus plug-ins to interact with third-party systems
+These services run on top of a Linux distribution with a complex set of user-space integration dependencies
+OpenStack cannot be productized as a standalone layer
+A supported, stable platform requires integration and testing of each component
+
+Virtualization: Guest performance, reliability, and Windows
+Security: SELinux enforcing guest isolation
+Network: Optimized performance for software-defined networking (SDN) and Open vSwitch (OVS)
+Storage: Vendor plug-ins, performance, thin provisioning
+Ecosystem: Certification of hardware, storage, and networks
+
+Red Hat OpenStack Platform Director
+
+Automated upgrades
+Users can upgrade major releases (7.0 ? 8.0)
+Automated live updates
+Users can update minor releases (8.0 ? 8.1)
+Expanded APIs for deployment and management
+CLI operations or CloudForms for “day 2” management
+Support for IPv6 in undercloud as well as production overcloud (single stack)
+Support for external or preexisting Ceph Storage deployments
+Expanded hardware driver support (Ironic)
+Deployment validations: pre-, during, and post-deployment (Tempest)
+Support for Sahara data processing
+
+Red Hat Enterprise Linux KVM
+Lightweight/small footprint
+Less overhead
+Smaller attack surface
+Cost effective
+Closer to operating system DNA
+Provides massive scale-out capabilities
+Maximum benefit with virtualized Linux
+
+vCenter Driver for VMware vSphere Hypervisor
+Coexists with existing infrastructure assets
+Provides seamless path to future migration to OpenStack
+Uses NSX plug-in for Neutron
+NSX supported only in production environments, per VMware’s support requirements
+
+Largest Certified Partner Ecosystem
+Over 350+ members since launch in April 2013
+Over 900 certified solutions in partner marketplace
+Over 4,000 Red Hat Enterprise Linux certified compute servers
+
+Training
+CL210 Red Hat OpenStack Administration
+CL220R Red Hat CloudForms Administration
+Certification
+Red Hat Certified Engineer in Red Hat OpenStack
+Red Hat Certified System Administrator in Red Hat OpenStack
+Red Hat Certificate of Expertise in Hybrid Cloud Management
+Red Hat Certificate of Expertise in Platform-as-a-Service
+Red Hat Certificate of Expertise in Hybrid Cloud Storage
+Red Hat Certified Virtualization Administrator (RHCVA)
+Red Hat Certificate of Expertise in Deployment and Systems Management
+Red Hat Certificate of Expertise in Configuration Management
+Consulting
+Advanced Identity Management for OpenStack
+Red Hat Consulting Discovery Session: Cloud Strategy
+Red Hat Consulting Assessment: Infrastructure-as-a-Service
+Red Hat Consulting Smart Start: Infrastructure-as-a-Service
+Red Hat Consulting Guided Transition: Cloud Management
+
+Why Red Hat OpenStack Platform
+Enterprise-hardened, production-ready code
+Co-engineered and integrated with Red Hat Enterprise Linux
+Integrated deployment, orchestration, and management tools (director)
+Included operational, life cycle, and analytics tool (Red Hat CloudForms)
+Foundation for private or public cloud, as well as network functions virtualization (NFV)
+World’s largest OpenStack partner ecosystem
+
+Red Hat’s 20-year history in open source gives it the experience and resources to:
+Support production-ready customers globally
+Drive new features
+Influence project strategy and direction
+Enable partner collaboration
+Wide-ranging participation in OpenStack projects contrasts with most vendors, who are more narrowly focused
+These efforts allow Red Hat to create a production-ready distribution with the ecosystem, enterprise life cycle, and support that customers expect from Red Hat
+
+Red Hat CloudForms
+
+Management for Red Hat OpenStack Platform
+Workload management
+Manage complete life cycle of OpenStack workloads from provisioning to retirement
+Infrastructure management
+Manage OpenStack infrastructure resources, including both undercloud (management) and overcloud (production cloud)
+Catalog of services
+Provision one or more workloads and Heat templates with single click from powerful catalog of services
+Orchestration
+Orchestrate complex workflows within OpenStack and external third-party solution such as CMDB, ITSM tool, and others
+Heat template management
+Manage full life cycle of Heat templates using an intuitive graphical user interface
+User management
+Delegate certain management roles or actions to end users and administrators (role-based access control, or RBAC)
+Monitoring and reporting
+Monitor and track deployed workloads and resources, recording resource usage to ensure requestors do not use beyond their quotas
+Scale control
+Scale out automatically, based on policies or manually, as needed
+Financial management
+Chargeback and showback
+
+Red Hat Ceph Storage
+
+
+Powerful production-grade, distributed storage for Red Hat OpenStack Platform
+Open, massively scalable, and software defined
+Flexible, scale-out architecture on clustered commodity hardware
+Specifically designed for cloud infrastructure and emerging workloads
+Self-managing, self-healing, and highly efficient
+
+Single efficient platform to support all OpenStack storage needs
+Block (ephemeral and persistent, object, and file storage on commercial off-the-shelf (COTS) hardware
+Tightly integrated with Red Hat OpenStack Platform services
+Nova, Cinder, Glance, Keystone, and Swift
+Manilla (tech preview)
+User-driven storage life cycle management with 100% API coverage
+
+Addressing the Need for Network Functions Virtualization (NFV)
+OpenStack for network functions virtualization (NFV) is maturing to meet several critical needs to be a viable solution for service providers
+
+Standalone Offering with Complete Management
+Red Hat Enterprise Linux
+Red Hat OpenStack Platform Director
+Red Hat CloudForms1
+Red Hat Ceph Storage (64TB)2
+
+Integrated Suite for Private Cloud
+Red Hat Enterprise Linux
+Red Hat Enterprise Virtualization
+Red Hat Satellite
+Red Hat Insights
+
+Integrated Suite for DevOps
+OpenShift Enterprise
+Red Hat Enterprise Linux
+Red Hat Enterprise Virtualization
+Red Hat Satellite
+Red Hat Insights

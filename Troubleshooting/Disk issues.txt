@@ -1,0 +1,131 @@
+LVM Maintenance
+
+Determine which partitions are used for LVM, so you can retrieve data needed for recovery from the disks themselves:
+[root@server1 ~]# fdisk -l /dev/vda
+
+Disk /dev/vda: 21.5 GB, 21474836480 bytes
+16 heads, 63 sectors/track, 41610 cylinders, total 41943040 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x0008d4f4
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/vda1   *        2048     1026047      512000   83  Linux
+/dev/vda2         1026048    41943039    20458496   8e  Linux LVM
+
+Recommended (not required): Mark partitions to be used as an LVM physical volume as Linux LVM (0x8e).
+You can retrieve information concerning the volume group, physical volumes, and logical volumes directly from the first sectors of a physical partition.
+LVM2 typically keeps copies of the LVM metadata configuration in the first 255 sectors of the LVM partition.
+[root@server1 ~]# dd if=/dev/vda2 bs=512 count=255 skip=1 of=/tmp/vda2-vginfo
+255+0 records in
+255+0 records out
+130560 bytes (131 kB) copied, 0.0122141 s, 10.7 MB/s
+
+After skipping the first block, skip=1 places the next 255 blocks in /tmp/vda2-vginfo.
+Use strings to inspect the contents.
+Information about the structure of the LVM volume groups, physical volumes, and logical volumes appears after the first few binary characters.
+[root@server1 ~]# strings /tmp/vda2-vginfo
+
+vg0 {
+id = "l92Vi1-hWr9-XStM-VAYL-VWeL-EO1G-6KPsX0"
+seqno = 1
+status = ["RESIZEABLE", "READ", "WRITE"]
+flags = []
+extent_size = 8192
+max_lv = 0
+max_pv = 0
+metadata_copies = 0
+
+physical_volumes {
+
+pv0 {
+id = "eOtYdv-U1CH-sZQd-I3Wa-ouo7-fB0D-m1bck5"
+device = "/dev/vda2"
+... output truncated ...
+
+
+This area buffers both outdated and current data.
+Multiple configuration entries on the disk may exist.
+Find the block with the most recent timestamp and remove everything except the block of plain text that contains LVM declarations.
+Fix physical device declarations if needed.
+If in doubt, look at any existing /etc/lvm/backup/vg0 file to see if you are missing something.
+Save the new configuration file as vg0.cfg.
+vgcfgbackup automatically takes backups of the data
+
+
+You can now restore the volume group using this text file:
+[root@server1 ~]# vgcfgrestore -f vg0.cfg vg0
+Scan to confirm that the VG was properly recognized.
+[root@server1 ~]# vgscan
+Reading all physical volumes. This may take a while...
+Found volume group "vg0" using metadata type lvm2
+If the VG was recognized, you can now activate it to access the logical volumes inside it.
+[root@server1 ~]# vgchange vg0 -a y
+lvscan
+ACTIVE      '/dev/vg0/lvroot' [7,81 GB] inherit
+ACTIVE      '/dev/vg0/lvswap' [2,00 GB] inherit
+ACTIVE      '/dev/vg0/lvhome' [8,56 GB] inherit
+You can now access your logical volumes normally.
+For more info, see:
+Red Hat Enterprise Linux 6 Logical Volume Manager Administration
+lvm(8) man page
+
+
+Create a New Encrypted Volume
+Create a new partition with fdisk.
+Use cryptsetup luksFormat /dev/vdaN to encrypt the new partition and set the decryption password.
+Use cryptsetup luksOpen /dev/vdaN name to unlock the /dev/vdaN encrypted volume as /dev/mapper/name after the correct decryption password is entered.
+Create an ext4 file system on the decrypted volume:
+mkfs -t ext4 /dev/mapper/name
+Create the directory mount point and mount the file system:
+mkdir /secret ; mount /dev/mapper/name /secret
+When finished, unmount /dev/mapper/name and run cryptsetup luksClose name to lock the encrypted volume.
+
+
+Persistently Mount an Encrypted Volume
+Create /etc/crypttab. This file lists one device per line, with the following space separated fields:
+name  /dev/vdaN  /path/to/password/file
+name is the name the device mapper uses for the device: /dev/mapper/name.
+/dev/vdaN is the underlying "locked" device.
+/path/to/password/file is the password file that unlocks the device. If you leave the last field blank (or set it to none), the user is prompted for the decryption password during startup.
+Create an entry in /etc/fstab such as the following:
+/dev/mapper/name  /secret  ext4  defaults  1 2
+The device name in the first field of /etc/fstab must match the device name in /etc/crypttab. A mismatch between these names is a common configuration error.
+Create the key file that includes the password.
+Make sure it is owned by root and the mode is 600.
+Add the key for LUKS:
+[root@server1 ~]# cryptsetup luksAddKey /dev/sdaN /path/to/password/file
+
+
+
+Encrypted File System Creation Example
+Create a new partition as previously done. Assume the device is /dev/vda5.
+[root@server1 ~]# cryptsetup luksFormat /dev/vda5
+WARNING!
+========
+This will overwrite data on /dev/vda5 irrevocably.
+Are you sure? (Type uppercase yes): YES
+Enter LUKS passphrase: testing123
+Verify passphrase: testing123
+[root@server1 ~]# cryptsetup luksOpen /dev/vda5 encdisk
+Enter passphrase for /dev/vda5: testing123
+[root@server1 ~]# mkfs -t ext4 /dev/mapper/encdisk
+[root@server1 ~]# mkdir /encdisk
+[root@server1 ~]# mount /dev/mapper/encdisk /encdisk
+To make the disk persistent, append the following to /etc/fstab:
+/dev/mapper/encdisk  /encdisk  ext4  defaults  1 2
+Create /etc/crypttab and add the following line to require a password every time the machine boots:
+encdisk  /dev/vda5
+
+Automatic Entry of Encryption Password
+If you want an automated boot, you must place the password in a text file:
+[root@server1 ~]# echo 'encdisk /dev/vda5 /root/encdisk' > /etc/crypttab
+[root@server1 ~]# echo 'testing123' > /root/encdisk
+[root@server1 ~]# chown root /root/encdisk
+[root@server1 ~]# chmod 600 /root/encdisk
+[root@server1 ~]# cryptsetup luksAddKey /dev/vda5 /root/encdisk
+Enter any passphrase: testing123
+For more info, see:
+Red Hat Enterprise Linux 6 Installation Guide, Appendix C: Disk Encryption
+cryptsetup(8) and crypttab(5) man pages

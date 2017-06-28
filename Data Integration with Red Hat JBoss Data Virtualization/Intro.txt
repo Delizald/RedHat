@@ -1,0 +1,39 @@
+Goals
+Connect - Access data from a multiplicity of sources.
+Compose - Combine and transform data to logical data models.
+Consume - Make data easy to consume via standards-based interface
+
+Teiid Designer plug-in inside Red Hat JBoss Developer Studio
+
+Runtime JBoss Data Virtualization server inside Red Hat Enterprise Application Platform
+
+Metadata repository based on Modeshape project
+
+Why JBoss Data Virtualization?
+
+Simplification - Solve the data spaghetti architecture
+
+Performance - Caching
+
+Integrity - Provide transactional guarantees and offer built-in security features
+
+JBoss Data Virtualization Use Cases
+
+Enabler for business intelligence tools
+
+Data as a service
+
+Operational reporting
+
+Data firewall
+
+
+JBoss Data Virtualization Performance Tuning
+
+Tuning by setting properties in Teiid subsystems
+
+BufferManager properties to control memory and disk usage
+
+Threading
+
+Caching for results and query plans

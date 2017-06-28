@@ -1,0 +1,416 @@
+Identify Hardware
+Hardware Documentation Tools
+Use ls* commands, such as lscpu, lsblk, lspci and lsusb, to get an overview of the hardware connected to your system.
+
+The last two commands can take multiple -v parameters to increase verbosity.
+[root@server1 ~]# lscpu
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                1
+On-line CPU(s) list:   0
+Thread(s) per core:    1
+Core(s) per socket:    1
+CPU socket(s):         1
+NUMA node(s):          1
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 2
+Stepping:              3
+CPU MHz:               2659.998
+BogoMIPS:              5319.99
+Hypervisor vendor:     KVM
+Virtualization type:   full
+L1d cache:             32K
+L1i cache:             32K
+L2 cache:              4096K
+NUMA node0 CPU(s):     0
+[root@server1 ~]# lsblk
+NAME                  MAJ:MIN RM   SIZE RO MOUNTPOINT
+vda                   252:0    0     6G  0
++-vda1                252:1    0   256M  0 /boot
++-vda2                252:2    0   4.5G  0
+  +-vgsrv-swap (dm-0) 253:0    0   544M  0 [SWAP]
+  +-vgsrv-root (dm-1) 253:1    0   3.3G  0 /
+  +-vgsrv-home (dm-2) 253:2    0   256M  0 /home
+[root@server1 ~]# lspci
+00:00.0 Host bridge: Intel Corporation 440FX - 82441FX PMC [Natoma] (rev 02)
+00:01.0 ISA bridge: Intel Corporation 82371SB PIIX3 ISA [Natoma/Triton II]
+00:01.1 IDE interface: Intel Corporation 82371SB PIIX3 IDE [Natoma/Triton II]
+00:01.2 USB Controller: Intel Corporation 82371SB PIIX3 USB [Natoma/Triton II] (rev 01)
+00:01.3 Bridge: Intel Corporation 82371AB/EB/MB PIIX4 ACPI (rev 03)
+00:02.0 VGA compatible controller: Cirrus Logic GD 5446
+00:03.0 Ethernet controller: Red Hat, Inc Virtio network device
+00:04.0 Audio device: Intel Corporation 82801FB/FBM/FR/FW/FRW (ICH6 Family) High Definition Audio Controller (rev 01)
+00:05.0 SCSI storage controller: Red Hat, Inc Virtio block device
+00:06.0 RAM memory: Red Hat, Inc Virtio memory balloon
+[root@server1 ~]# lsusb
+Bus 001 Device 002: ID 0627:0001 Adomax Technology Co., Ltd
+Bus 001 Device 001: ID 1d6b:0001 Linux Foundation 1.1 root hub
+
+
+
+
+Use dmidecode to query your BIOS for installed hardware, which gives you easy access to serial numbers and asset tags.
+To keep your asset database up-to-date, you can parse the dmidecode output to automate the update process.
+
+
+Use x86info to display detailed hardware information (memory cache, CPU features, processor speed, model-specific registers, and more) for 32-bit and 64-bit x86-based machines.
+
+
+Use dmesg to read the contents of the kernel’s internal log buffer.
+[root@server1 ~]# dmesg | head
+Initializing cgroup subsys cpuset
+Initializing cgroup subsys cpu
+Linux version 2.6.32-131.0.15.el6.x86_64 (mockbuild@x86-007.build.bos.redhat.com) (gcc version 4.4.4 20100726 (Red Hat 4.4.4-13) (GCC) ) #1 SMP Tue May 10 15:42:40 EDT 2011
+Command line: ro root=/dev/mapper/GLSvg-GLSroot rd_LVM_LV=GLSvg/GLSroot rd_LVM_LV=GLSvg/GLSswap rd_NO_LUKS rd_NO_MD rd_NO_DM LANG=en_US.UTF-8 SYSFONT=latarcyrheb-sun16 KEYBOARDTYPE=pc KEYTABLE=us crashkernel=auto rhgb quiet
+KERNEL supported cpus:
+  Intel GenuineIntel
+  AMD AuthenticAMD
+  Centaur CentaurHauls
+BIOS-provided physical RAM map:
+ BIOS-e820: 0000000000000000 - 000000000009fc00 (usable)
+ 
+ 
+ Kernel module: An optional portion of kernel code that may be loaded after the kernel has been initialized.
+Only a few essential modules are compiled directly into the kernel.
+Dynamic modules, needed at boot, are loaded by GRUB from initrd.
+Other modules may be loaded as needed later from /lib/modules/.
+Modules are used for several reasons:
+Reduced memory footprint
+Flexibility
+Maximized uptime
+Third-party modules are placed under the particular kernel’s /lib/modules/version/ directory. ** When a new kernel is installed, reinstall third-party modules into the new kernel directory tree.
+
+
+Working With Modules
+lsmod lists all loaded modules, along with the corresponding size and usage count.
+[root@server1 ~]# lsmod | grep xfs
+xfs                   914152  2
+libcrc32c              12644  1 xfs
+modprobe loads modules and automatically includes dependencies.
+[root@server1 ~]# modprobe raid1
+modprobe -r removes a loaded module that is not currently in use.
+[root@server1 ~]# modprobe -r raid1
+modinfo can be passed to a module name or filename to display associated information, such as author’s name, license, description, module version, dependencies, parameters, etc.
+[root@server1 ~]# modinfo xfs
+filename:       /lib/modules/3.10.0-123.el7.x86_64/kernel/fs/xfs/xfs.ko
+license:        GPL
+description:    SGI XFS with ACLs, security attributes, large block/inode numbers, no debug enabled
+author:         Silicon Graphics, Inc.
+alias:          fs-xfs
+srcversion:     439A73733957FAAE120F1B2
+depends:        libcrc32c
+intree:         Y
+vermagic:       3.10.0-123.el7.x86_64 SMP mod_unload modversions
+signer:         Red Hat Enterprise Linux kernel signing key
+sig_key:        00:AA:5F:56:C5:87:BD:82:F2:F9:9D:64:BA:83:DD:1E:9E:0D:33:4A
+sig_hashalgo:   sha256
+For more info, see lscpu(1), lsblk(8), lspci(8), lsusb(8), dmidecode(8), x86info(1), and dmesg(1) man pages.
+
+
+Device Files
+Historically, Linux shipped with thousands of files under the /dev directory.
+Currently, Linux uses the more efficient udev system.
+A series of utilities and configuration files which provide rules that apply whenever a device is connected to the system and detected by the kernel.
+Facilitates creating or removing files when the corresponding device is plugged in or disconnected.
+Lets administrators add rules to modify default names and permissions, which are located under /etc/udev/rules.d/.
+Red Hat Enterprise Linux ships with a default set of rules.
+When adding your own rules, add a new file versus editing existing files.
+For more info, see lsmod(8), modprobe(8), modinfo(8), and udev(7) man pages.
+
+Monitoring and Testing Tools
+Be proactive and monitor for hard drive failures using SMART.
+Memory errors happen all the time due to outside interference.
+ECC-memory (Error Correcting Code) helps but does not fix faulty memory chips.
+Remove a memory bank and put it in a dedicated memory-tester.
+Install memtest86+ and run memtest-setup to test memory on the machine itself.
+You get an extra stanza in /boot/grub/grub.conf for memtest86+.
+Reboot your machine into this stanza to start an extensive memory test.
+Run the test overnight and check for errors in the morning.
+If a memory bank shows errors, replace it.
+You can also launch memtest from Red Hat Enterprise Linux installation media. The "Memory test" menu option from the installation media launches memtest from that media.
+
+Example:memtest86+
+[root@server1 ~]# yum -y install memtest86+
+...
+[root@server1 ~]# memtest-setup
+grub2 detected, installing template...
+grub 2 template installed.
+Do not forget to regenerate your grub.cfg by:
+  # grub2-mkconfig -o /boot/grub2/grub.cfg
+Setup complete.
+[root@server1 ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
+Generating grub configuration file ...
+Found linux image: /boot/vmlinuz-3.10.0-123.el7.x86_64
+Found initrd image: /boot/initramfs-3.10.0-123.el7.x86_64.img
+Found linux image: /boot/vmlinuz-0-rescue-2f7e407938c64980b13961ca0708f2d6
+Found initrd image: /boot/initramfs-0-rescue-2f7e407938c64980b13961ca0708f2d6.img
+Found memtest image: /boot/elf-memtest86+-4.20
+done
+[root@server1 ~]# less /boot/grub2/grub.cfg
+...
+### BEGIN /etc/grub.d/20_memtest86+ ###
+menuentry 'Red Hat Enterprise Linux Server Memtest memtest86+-4.20' {
+        insmod part_msdos
+        insmod xfs
+        set root='hd0,msdos1'
+        if [ x$feature_platform_search_hint = xy ]; then
+          search --no-floppy --fs-uuid --set=root --hint-bios=hd0,msdos1 --hint-efi=hd0,msdos1 --hint-baremetal=ahci0,msdos1 --hint='hd0,msdos1'  3bba8257-7403-46c4-a189-0d0677d2bec8
+        else
+          search --no-floppy --fs-uuid --set=root 3bba8257-7403-46c4-a189-0d0677d2bec8
+        fi
+        insmod bsd
+        echo    'Loading Red Hat ...Loading Enterprise Linux ...Loading Server Memtest ...Loading memtest86+-4.20  ...'
+        knetbsd /elf-memtest86+-4.20
+}
+### END /etc/grub.d/20_memtest86+ ###
+...
+[root@server1 ~]# ls /boot|grep memtest
+...
+elf-memtest86+-4.20
+memtest86+-4.20
+...
+[root@server1 ~]# reboot
+
+
+Virtual Hardware Identification
+From the hypervisor host, use virsh to identify what hardware exists and is supplied to a virtual machine.
+[root@desktop1 ~]# virsh nodeinfo
+CPU model:           x86_64
+CPU(s):              1
+CPU frequency:       3498 MHz
+CPU socket(s):       1
+Core(s) per socket:  1
+Thread(s) per core:  1
+NUMA cell(s):        1
+Memory size:         1870760 KiB
+
+[root@desktop1 ~]# virsh capabilities
+<capabilities>
+
+  <host>
+    <uuid>bb833240-eab9-11df-9364-c4e14f370acf</uuid>
+    <cpu>
+      <arch>x86_64</arch>
+      <model>Westmere</model>
+      <vendor>Intel</vendor>
+      <topology sockets='1' cores='2' threads='2'/>
+      <feature name='rdtscp'/>
+      <feature name='xtpr'/>
+      <feature name='tm2'/>
+      <feature name='est'/>
+      <feature name='vmx'/>
+... output omitted ...
+Copyright ©2015 Red Hat, Inc.
+
+1:07
+
+Virtualization Failures
+Virtual Hardware Identification
+To list devices supplied to a particular virtual machine, use virsh dumpxml domain.
+You can use virsh dumpxml domain to replicate a VM’s configuration to another physical system and import it with virsh define or virsh create.
+To modify the configuration, use virsh edit domain.
+The <uuid> setting must be unique. Modify that line along with <name> and <mac address> if replicating a virtual system.
+[root@desktop1 ~]# virsh dumpxml rhel6-guest
+<domain type='kvm'>
+  <name>rhel6-guest</name>
+  <uuid>5bc93d1a-8c71-ef16-13c0-f8996516cdf3</uuid>
+  <memory>1048576</memory>
+  <currentMemory>1048576</currentMemory>
+  <vcpu>1</vcpu>
+  <os>
+    <type arch='x86_64' machine='pc-0.14'>hvm</type>
+    <boot dev='cdrom'/>
+    <boot dev='hd'/>
+    <bootmenu enable='no'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <pae/>
+  </features>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <devices>
+    <emulator>/usr/bin/qemu-kvm</emulator>
+    <disk type='block' device='disk'>
+      <driver name='qemu' type='raw'/>
+      <source dev='/dev/vg0/lv_kvmrh6'/>
+      <target dev='vda' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='/home/student/Downloads/rhel-server-6.1-x86_64-dvd.iso'/>
+      <target dev='hdc' bus='ide'/>
+      <readonly/>
+      <address type='drive' controller='0' bus='1' unit='0'/>
+    </disk>
+    <controller type='ide' index='0'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+    </controller>
+    <interface type='network'>
+      <mac address='52:54:00:17:eb:0e'/>
+      <source network='default'/>
+      <model type='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+    <serial type='pty'>
+      <target port='0'/>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    <input type='tablet' bus='usb'/>
+    <input type='mouse' bus='ps2'/>
+    <graphics type='vnc' port='-1' autoport='yes'/>
+    <sound model='ich6'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
+    </sound>
+    <video>
+      <model type='cirrus' vram='9216' heads='1'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </video>
+    <memballoon model='virtio'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
+    </memballoon>
+  </devices>
+</domain>
+Copyright ©2015 Red Hat, Inc.
+
+0:51
+
+Virtualization Failures
+Network Management via libvirtd
+There are two networking modes: "virtual network" and "shared device".
+By default, "virtual network" uses dnsmasq on the host to provide DHCP, DNS, and NAT services to the virtual machine.
+dnsmasq is generally applicable for development workstations.
+Virtual servers need direct access to the physical network and require a bridge device on the hypervisor host.
+Make sure that manually-specified MAC addresses are unique for the LAN segment, particularly in bridged scenarios.
+[root@desktop1 ~]# virsh net-list
+Name                 State      Autostart
+-----------------------------------------
+default              active     yes
+
+[root@desktop1 ~]# virsh net-dumpxml default
+<network>
+  <name>default</name>
+  <uuid>f755528c-074e-4a1e-ada3-d42ee8477fbb</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr0' stp='on' delay='0' />
+  <ip address='192.168.122.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.122.2' end='192.168.122.254' />
+    </dhcp>
+  </ip>
+</network>
+For more info, see:
+Red Hat Enterprise Linux Virtualization Guide, Chapter 10: Network Configuration
+virsh(1) man page
+Copyright ©2015 Red Hat, Inc.
+
+
+Virtual Hardware Identification
+To list devices supplied to a particular virtual machine, use virsh dumpxml domain.
+You can use virsh dumpxml domain to replicate a VM’s configuration to another physical system and import it with virsh define or virsh create.
+To modify the configuration, use virsh edit domain.
+The <uuid> setting must be unique. Modify that line along with <name> and <mac address> if replicating a virtual system.
+[root@desktop1 ~]# virsh dumpxml rhel6-guest
+<domain type='kvm'>
+  <name>rhel6-guest</name>
+  <uuid>5bc93d1a-8c71-ef16-13c0-f8996516cdf3</uuid>
+  <memory>1048576</memory>
+  <currentMemory>1048576</currentMemory>
+  <vcpu>1</vcpu>
+  <os>
+    <type arch='x86_64' machine='pc-0.14'>hvm</type>
+    <boot dev='cdrom'/>
+    <boot dev='hd'/>
+    <bootmenu enable='no'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <pae/>
+  </features>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>restart</on_crash>
+  <devices>
+    <emulator>/usr/bin/qemu-kvm</emulator>
+    <disk type='block' device='disk'>
+      <driver name='qemu' type='raw'/>
+      <source dev='/dev/vg0/lv_kvmrh6'/>
+      <target dev='vda' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='/home/student/Downloads/rhel-server-6.1-x86_64-dvd.iso'/>
+      <target dev='hdc' bus='ide'/>
+      <readonly/>
+      <address type='drive' controller='0' bus='1' unit='0'/>
+    </disk>
+    <controller type='ide' index='0'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+    </controller>
+    <interface type='network'>
+      <mac address='52:54:00:17:eb:0e'/>
+      <source network='default'/>
+      <model type='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+    <serial type='pty'>
+      <target port='0'/>
+    </serial>
+    <console type='pty'>
+      <target type='serial' port='0'/>
+    </console>
+    <input type='tablet' bus='usb'/>
+    <input type='mouse' bus='ps2'/>
+    <graphics type='vnc' port='-1' autoport='yes'/>
+    <sound model='ich6'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
+    </sound>
+    <video>
+      <model type='cirrus' vram='9216' heads='1'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </video>
+    <memballoon model='virtio'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
+    </memballoon>
+  </devices>
+</domain>
+
+
+
+Network Management via libvirtd
+There are two networking modes: "virtual network" and "shared device".
+By default, "virtual network" uses dnsmasq on the host to provide DHCP, DNS, and NAT services to the virtual machine.
+dnsmasq is generally applicable for development workstations.
+Virtual servers need direct access to the physical network and require a bridge device on the hypervisor host.
+Make sure that manually-specified MAC addresses are unique for the LAN segment, particularly in bridged scenarios.
+[root@desktop1 ~]# virsh net-list
+Name                 State      Autostart
+-----------------------------------------
+default              active     yes
+
+[root@desktop1 ~]# virsh net-dumpxml default
+<network>
+  <name>default</name>
+  <uuid>f755528c-074e-4a1e-ada3-d42ee8477fbb</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr0' stp='on' delay='0' />
+  <ip address='192.168.122.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.122.2' end='192.168.122.254' />
+    </dhcp>
+  </ip>
+</network>
+For more info, see:
+Red Hat Enterprise Linux Virtualization Guide, Chapter 10: Network Configuration
+virsh(1) man page

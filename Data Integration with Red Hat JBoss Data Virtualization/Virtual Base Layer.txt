@@ -1,0 +1,17 @@
+Virtual Base Layer
+Provides 1:1 mapping with source model
+Provides isolation from data sources
+Imports data dictionary for relevant enterprise objects
+Uses data dictionary to build enterprise data layer
+
+Queries in JBoss Data Virtualization
+Federated query engine
+JBoss Data Virtualization creates query execution plan
+Queries are pushed down to sources to perform individual queries
+Teiid performs query plan optimization to improve performance
+
+Transactions in JBoss Data Virtualization
+Support for global, local, and request-level transactions
+Implemented as XA transactions
+XA transactions can be used from JDB, ODBC, and web services transports
+For local transactions, autoCommit is TRUE by default

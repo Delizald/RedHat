@@ -1,0 +1,127 @@
+Red Hat Customer Portal is accessed via https://access.redhat.com
+Provides customers with access to:
+Red Hat support ticketing and reporting system
+Solutions, FAQs, and official product documentation
+Thorough, integrated search
+Rich educational content, including whitepapers, info sheets, and multimedia presentations
+Downloads, updates, and evaluations
+Subscription and account management tools
+Public content gives potential customers general information about Red Hat products before purchasing a subscription.
+Private content requires a subscription and authentication, and includes:
+Software download areas
+Incident case management reporting tools
+Knowledgebase
+Videos
+ISO and package downloads are accessed via a link at the top of each top-level portal page.
+Red Hat Network continues to allow customers to manage software they deploy to servers with Red Hat Enterprise Linux subscriptions.
+
+ABRT
+Automatic Bug-Reporting Tool (ABRT) is a daemon that monitors when applications crash.
+Collects and stores information about the application, such as:
+Command-line arguments
+Other information about the application
+Memory core dump, if present.
+Configure ABRT to do either of the following:
+Automatically send information to a relevant issue tracker
+Store information locally for review and manually report (default behavior)
+ABRT is installed and configured to run at boot-time by default.
+If not installed, install abrt package and start abrtd service.
+Use chkconfig abrtd on to configure ABRT to start persistently.
+Plugins are available to extend ABRT, such as:
+abrt-plugin-reportuploader - configure to send crash information to a single server for centralized reporting.
+ABRT’s global configuration file is /etc/abrt/abrt.conf.
+Plugin configurations are in /etc/abrt/plugins/\*.conf.
+Do not store password information in global configuration files; they are world readable.
+Override global configurations with individual user configurations defined in ~/.abrt/*.conf.
+
+abrt-cli
+abrt-cli can view, report, and delete stored crash information.
+Most commonly used abrt-cli parameters:
+abrt-cli --list
+Lists basic information about each recorded crash.
+abrt-cli --report UUID
+Reports the crash information specified by the UUID.
+abrt-cli --delete UUID
+Deletes the crash information specified by the UUID.
+ABRT avoids capturing redundant information from repeated crashes by the same application.
+Compares a current application crash with stored information.
+Until fixed, do not delete crash information with abrt-cli --delete for an application that crashes repeatedly.
+For more info, see:
+Red Hat Enterprise Linux 6 Deployment Guide, Chapter 21: Automatic Bug-Reporting Tool (ABRT)
+abrt-plugins(7) man page
+
+sosreport
+sosreport collects system data to help Red Hat Global Support Services and Development solve customer problems.
+sosreport gathers as much information as possible, while avoiding:
+Creation of a very large file
+Invasion of user privacy
+Collection of information that could be detrimental to system integrity
+Working With sosreport
+Install the sos RPM appropriate to your version of Red Hat Enterprise Linux.
+[root@server1 ~]# yum -y install sos
+... output omitted ...
+Run sosreport as root from the command line:
+[root@server1 ~]# sosreport
+
+sosreport (version 2.2)
+
+This utility will collect some detailed information about the
+hardware and setup of your Red Hat Enterprise Linux system.
+... output omitted ...
+When finished, you will see:
+Please enter your first initial and last name [hostname]:
+Please enter the case number that you are generating this report for:
+sosreport saves a compressed tar file in /tmp.
+[root@server1 ~]# ls /tmp/*tar*
+sosreport-serverX-20110829065429-4703.tar.xz
+View the contents of the file:
+[root@server1 ~]# tar tJf /tmp/sosreport-serverX-20110829065429-4703.tar.xz
+... output omitted ...
+For more info, see sosreport(1) man page.
+
+netconsole
+netconsole sends system console messages to a remote log server when a kernel panic occurs.
+Includes register and kernel stack information that helps developers determine what caused the crash.
+Make sure you have a network logging server configured.
+On the system that crashes, edit /etc/sysconfig/netconsole:
+Uncomment the SYSLOGADDR line
+Define it as the hostname or IP address of the system acting as a syslog server:
+# The IP address of the remote syslog server to send messages to
+# SYSLOGADDR=
+# The IP address of the remote syslog server to send messages to
+
+SYSLOGADDR=192.168.0. X
+Save your changes to the configuration file.
+Start netconsole and configure it to restart persistently.
+[root@server1 ~]# systemctl enable netconsole
+[root@server1 ~]# systemctl start netconsole
+This loads a kernel module that sends a syslog message to the host specified by SYSLOGADDR if the system crashes.
+
+kdump
+If kernel panic log messages do not provide enough information to diagnose a malfunctioning system, developers may ask for a dump of the system’s memory.
+Customers upload dumps to an FTP server.
+Red Hat’s support engineers download and analyze them.
+Collect dump via a capture kernel:
+A small intermediate kernel that recovers system memory and dumps to a file if a crash happens.
+Booting the capture kernel does not involve BIOS.
+kdump is used from the capture kernel context to either:
+Copy hardware memory areas to disk.
+Send over a network to another server via SSH.
+This is not enabled by default
+Can configure at install time.
+
+Manually Enable kdump
+Do one of the following:
+Run system-config-kdump
+Modify /etc/kdump.conf and enable the kdump service:
+[root@server1 ~]# less /etc/kdump.conf
+[root@server1 ~]# system-config-kdump
+Test the “fast boot” mechanism provided by kexec by executing:
+[root@server1 ~]# kver=$(uname -r)
+[root@server1 ~]# kexec -l /boot/vmlinuz-$kver --initrd=/boot/initramfs-$kver.img --command-line="$(cat /proc/cmdline)"
+[root@server1 ~]# init 6
+Watch the end of the system shutdown carefully; this reboots the kernel but skips the BIOS step.
+For more info, see:
+Red Hat Enterprise Linux 6 Deployment Guide, Chapter 24: The kdump Crash Recovery Service
+kdump.conf(5) and kexec(8) man pages
+/usr/share/doc/kernel-doc-*/Documentation/networking/netconsole.txt
